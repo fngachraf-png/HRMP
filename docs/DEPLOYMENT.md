@@ -58,6 +58,12 @@ cloudflared tunnel run --url http://localhost:3000 fwms-local
 
 **عند اشتباه تسريب:** إبطال فوري من لوحة الجهة → تنظيف تاريخ Git إن لزم → تدوير كل الأسرار → إبلاغ في `docs/WORKLOG.md`.
 
+**الدفع من بيئة بلا مدير اعتمادات** (بيئة التطوير السحابية أو Termux):
+```bash
+FWMS_GITHUB_TOKEN=ghp_xxxxxxxxxxxx ./scripts/push.sh   # يدفع main + الوسوم
+```
+التوكن كمتغير بيئة فقط — يُبطل فور انتهاء الحاجة، ولا يُخزَّن في أي ملف.
+
 ## 5. التحقق بعد أي نشر (قائمة فحص)
 
 - [ ] `GET /api/health` يرجع `{"status":"ok"}` مع طابع زمني.
