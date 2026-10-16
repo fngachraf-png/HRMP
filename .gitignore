@@ -66,3 +66,6 @@ server.log
 # scaffold artifacts (not part of FWMS)
 /download/
 /mini-services/
+
+# FWMS test artifacts
+/.cj-*

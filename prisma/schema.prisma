@@ -54,6 +54,10 @@ model Company {
   payRules      PayRule[]
   verificationPolicies VerificationPolicy[]
   auditLogs     AuditLog[]
+  branches      Branch[]
+  projects      Project[]
+  sites         Site[]
+  workerGroups  WorkerGroup[]
 
   @@index([status])
 }
@@ -117,6 +121,92 @@ model AccountantGrant {
 }
 
 // ─────────────────────────────────────────────────────────────
+// البنية التنظيمية والمواقع (SPEC §5 و§8 — المرحلة 2)
+// الأرشفة بدل الحذف (status=archived) حفاظًا على سلامة المراجع (SPEC §11.7)
+// ─────────────────────────────────────────────────────────────
+
+/// فرع الشركة (SPEC §5: branches) — يضم مشاريع ومواقع
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  code      String?
+  city      String?
+  address   String?
+  status    String   @default("active") // active | archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  projects Project[]
+  sites    Site[]
+
+  @@index([companyId, status])
+}
+
+/// مشروع/عقد داخل الشركة (SPEC §5: projects) — يُسنَد له مواقع
+model Project {
+  id        String    @id @default(cuid())
+  companyId String
+  branchId  String?
+  name      String
+  code      String?
+  status    String    @default("active") // active | archived
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  company Company  @relation(fields: [companyId], references: [id])
+  branch  Branch?  @relation(fields: [branchId], references: [id])
+  sites   Site[]
+
+  @@index([companyId, status])
+  @@index([companyId, branchId])
+}
+
+/// موقع العمل: نقطة مركز + نصف قطر للتحقق الجغرافي (SPEC §4.2 و§5: sites)
+/// latitude/longitude عشرية Float — نطاقها يُتحقق في طبقة التطبيق (zod)؛ SQLite بلا PostGIS
+model Site {
+  id        String   @id @default(cuid())
+  companyId String
+  branchId  String?
+  projectId String?
+  name      String
+  address   String?
+  latitude  Float // [-90, 90]
+  longitude Float // [-180, 180]
+  radiusM   Int      @default(50) // نصف قطر التحقق بالمتر (SPEC §4.2: افتراضي 50 م)
+  status    String   @default("active") // active | archived
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company             Company              @relation(fields: [companyId], references: [id])
+  branch              Branch?              @relation(fields: [branchId], references: [id])
+  project             Project?             @relation(fields: [projectId], references: [id])
+  verificationPolicies VerificationPolicy[]
+
+  @@index([companyId, status])
+  @@index([companyId, branchId])
+  @@index([companyId, projectId])
+}
+
+/// مجموعة عمال (SPEC §5: worker_groups) — تُستخدم في الجدولة والتغطية (المرحلة 3+)
+model WorkerGroup {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  description String?
+  status      String   @default("active") // active | archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
 // الإعدادات والسياسات
 // ─────────────────────────────────────────────────────────────
 
@@ -146,6 +236,7 @@ model VerificationPolicy {
   updatedAt        DateTime @updatedAt
 
   company Company? @relation(fields: [companyId], references: [id])
+  site    Site?    @relation(fields: [siteId], references: [id])
 
   @@unique([companyId, siteId])
 }

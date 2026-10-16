@@ -6,9 +6,13 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
   ScrollText,
   CalendarClock,
   MapPin,
+  FolderKanban,
+  GitBranch,
+  Building2,
   Calculator,
   FileText,
   Settings,
@@ -29,6 +33,11 @@ export type NavItem = {
 
 const ALL_ITEMS: NavItem[] = [
   { key: "overview", labelKey: "dashboard.overview", icon: LayoutDashboard, href: "/dashboard" },
+  { key: "companies", labelKey: "dashboard.companies", icon: Building2, href: "/dashboard/companies" },
+  { key: "branches", labelKey: "dashboard.branches", icon: GitBranch, href: "/dashboard/branches" },
+  { key: "projects", labelKey: "dashboard.projects", icon: FolderKanban, href: "/dashboard/projects" },
+  { key: "sites", labelKey: "dashboard.sites", icon: MapPin, href: "/dashboard/sites" },
+  { key: "groups", labelKey: "dashboard.groups", icon: UsersRound, href: "/dashboard/groups" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
   { key: "scheduling", labelKey: "dashboard.scheduling", icon: CalendarClock, soon: true },
   { key: "attendance", labelKey: "dashboard.attendance", icon: MapPin, soon: true },
@@ -43,10 +52,11 @@ export function DashboardSidebar({ role }: { role: string }) {
   const pathname = usePathname();
 
   // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات فقط
+  // عناصر المرحلة 2 (شركات/فروع/مشاريع/مواقع/مجموعات) تظهر لمن يملك company.manage أو platform.manage
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
     accountant: ["overview", "payroll", "reports", "audit"],
-    admin: ["overview", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
     co_admin: ["overview", "scheduling", "attendance", "reports"],
     employee: ["overview", "reports"],
   };
@@ -104,7 +114,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.1.0 — Phase 0+1</span>
+        <span dir="ltr">v0.2.0 — Phase 2</span>
       </div>
     </aside>
   );

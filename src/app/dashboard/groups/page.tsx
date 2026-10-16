@@ -1,0 +1,35 @@
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { ShieldAlert } from "lucide-react";
+import { getSession } from "@/lib/auth/session";
+import { sessionCan } from "@/lib/rbac";
+import { LOCALE_COOKIE, resolveLocale } from "@/i18n/config";
+import { getDictionary, tServer } from "@/i18n/get-dictionary";
+import { GroupsManager } from "@/components/fwms/groups-manager";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const dict = getDictionary(resolveLocale(store.get(LOCALE_COOKIE)?.value));
+  return { title: tServer(dict, "groups.title") };
+}
+
+export default async function GroupsPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const store = await cookies();
+  const locale = resolveLocale(store.get(LOCALE_COOKIE)?.value);
+  const dict = getDictionary(locale);
+
+  if (!sessionCan(session, "company.manage")) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3 py-16 text-center">
+        <ShieldAlert className="size-10 text-muted-foreground" aria-hidden />
+        <p className="text-sm font-medium text-muted-foreground">{tServer(dict, "common.forbidden")}</p>
+      </div>
+    );
+  }
+
+  return <GroupsManager />;
+}
