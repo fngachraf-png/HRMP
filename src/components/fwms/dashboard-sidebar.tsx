@@ -10,6 +10,7 @@ import {
   ScrollText,
   CalendarClock,
   CalendarCheck,
+  ClipboardCheck,
   LayoutTemplate,
   Repeat,
   MapPin,
@@ -19,6 +20,8 @@ import {
   Calculator,
   FileText,
   Settings,
+  ShieldCheck,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +48,10 @@ const ALL_ITEMS: NavItem[] = [
   { key: "shifts", labelKey: "dashboard.shifts", icon: CalendarClock, href: "/dashboard/shifts" },
   { key: "recurrences", labelKey: "dashboard.recurrences", icon: Repeat, href: "/dashboard/shift-recurrences" },
   { key: "mySchedule", labelKey: "dashboard.mySchedule", icon: CalendarCheck, href: "/dashboard/my-schedule" },
+  { key: "myAttendance", labelKey: "dashboard.myAttendance", icon: ClipboardCheck, href: "/dashboard/my-attendance" },
+  { key: "attendance", labelKey: "dashboard.attendance", icon: UserCheck, href: "/dashboard/attendance" },
+  { key: "verificationPolicies", labelKey: "dashboard.verificationPolicies", icon: ShieldCheck, href: "/dashboard/verification-policies" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
-  { key: "attendance", labelKey: "dashboard.attendance", icon: MapPin, soon: true },
   { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, soon: true },
   { key: "reports", labelKey: "dashboard.reports", icon: FileText, soon: true },
   { key: "audit", labelKey: "dashboard.audit", icon: ScrollText, soon: true },
@@ -57,15 +62,14 @@ export function DashboardSidebar({ role }: { role: string }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه فقط
-  // عناصر المرحلة 2 (فروع/مشاريع/مواقع/مجموعات) لمن يملك company.manage — المرحلة 3 (قوالب/ورديات/تكرارات) لمن يملك scheduling.manage
-  // «برنامجي» (mySchedule) لكل الأدوار المصادقة — self.view (SPEC §3)
+  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه وحضوره فقط
+  // المرحلة 4: «حضوري» للجميع (self.view) — «الحضور» لمن يملك attendance.manage — «السياسات» لمن يملك company.manage
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "users", "attendance", "payroll", "reports", "audit", "settings"],
-    accountant: ["overview", "mySchedule", "payroll", "reports", "audit"],
-    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "users", "attendance", "payroll", "reports", "audit", "settings"],
-    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "attendance", "reports"],
-    employee: ["overview", "mySchedule", "reports"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
+    accountant: ["overview", "mySchedule", "myAttendance", "payroll", "reports", "audit"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
+    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "reports"],
+    employee: ["overview", "mySchedule", "myAttendance", "reports"],
   };
   const keys = visibleKeys[role] ?? ["overview"];
   const items = ALL_ITEMS.filter((i) => keys.includes(i.key));
@@ -121,7 +125,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.3.0 — Phase 3</span>
+        <span dir="ltr">v0.4.0 — Phase 4</span>
       </div>
     </aside>
   );

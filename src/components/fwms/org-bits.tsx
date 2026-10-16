@@ -54,6 +54,12 @@ export function apiErrorMessage(t: (key: string) => string, error: unknown): str
   if (code === "same_day_only") return t("shifts.sameDayOnly");
   if (code === "shift_conflict") return t("shifts.conflictTitle");
   if (code === "invalid_duration" || code === "too_long") return t("common.invalidInput");
+  if (code === "no_open_checkin") return t("myAttendance.noOpenCheckin");
+  if (code === "already_checked_in") return t("myAttendance.alreadyCheckedIn");
+  if (code === "rate_limited") return t("myAttendance.rateLimited");
+  if (code === "not_reviewable") return t("attendance.notReviewable");
+  if (code === "face_acknowledgment_required") return t("policies.faceAckRequired");
+  if (code === "policy_narrowing_violation") return t("policies.narrowingViolation");
   return t("common.operationFailed");
 }
 

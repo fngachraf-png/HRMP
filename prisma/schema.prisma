@@ -61,6 +61,7 @@ model Company {
   shiftTemplates ShiftTemplate[]
   shifts        Shift[]
   shiftRecurrences ShiftRecurrence[]
+  attendanceEvents AttendanceEvent[]
 
   @@index([status])
 }
@@ -85,6 +86,7 @@ model User {
   auditActions AuditLog[]
   workerShifts      Shift[] @relation("ShiftWorker")
   workerRecurrences ShiftRecurrence[] @relation("RecurrenceWorker")
+  attendanceEvents AttendanceEvent[] @relation("AttendanceWorker")
 
   @@index([isActive])
 }
@@ -192,6 +194,7 @@ model Site {
   verificationPolicies VerificationPolicy[]
   shifts             Shift[]
   shiftRecurrences   ShiftRecurrence[]
+  attendanceEvents   AttendanceEvent[]
 
   @@index([companyId, status])
   @@index([companyId, branchId])
@@ -266,6 +269,7 @@ model Shift {
   site       Site             @relation(fields: [siteId], references: [id])
   template   ShiftTemplate?   @relation(fields: [templateId], references: [id])
   recurrence ShiftRecurrence? @relation(fields: [recurrenceId], references: [id])
+  attendanceEvents AttendanceEvent[]
 
   @@index([companyId, workerUserId, startsAt])
   @@index([companyId, siteId, startsAt])
@@ -298,6 +302,52 @@ model ShiftRecurrence {
 
   @@index([companyId, status])
   @@index([companyId, workerUserId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// الحضور والتحقق الجغرافي (SPEC §4.2 و§8 — المرحلة 4)
+// append-only: سجلات الحضور لا تُحذف أبدًا (SPEC §11.7) — الرفض يُسجَّل أيضًا كمحاولة
+// التخزين UTC (occurredAt وقت العميل، recordedAt وقت الخادم الفاصل)؛ المسافة تُحسب في الخادم حصرًا
+// ─────────────────────────────────────────────────────────────
+
+/// حدث حضور/انصراف واحد (check_in | check_out) — القلب: تحقق خادمي بالنطاق الجغرافي + مكافحة التلاعب + سياسة التحقق
+model AttendanceEvent {
+  id               String    @id @default(cuid())
+  companyId        String
+  workerUserId     String
+  siteId           String
+  shiftId          String? // الوردية المرتبطة إن وُجدت مطابقة زمنية
+  type             String // check_in | check_out
+  occurredAt       DateTime // وقت العميل المُبلَّغ (UTC)
+  recordedAt       DateTime @default(now()) // وقت الخادم الفاصل (UTC) — المرجع
+  latitude         Float // [-90, 90]
+  longitude        Float // [-180, 180]
+  accuracyM        Float? // دقة GPS المُبلَّغة بالمتر
+  distanceM        Float? // المسافة من مركز الموقع (Haversine) — محسوبة في الخادم
+  insideFence      Boolean // داخل نصف قطر الموقع؟
+  policy           String    @default("none") // السياسة المطلوبة وقت التسجيل: none|qr|face|qr_and_face|qr_or_face
+  verification     String    @default("none") // ما تحقق فعلاً لنفس الأنماط
+  qrNonce          String?   @unique // nonce من رمز QR المستخدم — منع إعادة الاستخدام (SPEC §4.2)
+  status           String    @default("verified") // verified | pending_review | rejected
+  reason           String? // outside_fence|poor_accuracy|mock_location|impossible_jump|qr_missing|qr_invalid|face_missing|face_failed|review_rejected
+  deviceJson       String? // بصمة الجهاز المُبلَّغة (platform/mockLocation/rooted/emulator) — بلا معرّفات حساسة
+  spoofJson        String? // نتيجة فحوص مكافحة التلاعب في الخادم (JSON نصي)
+  networkMode      String    @default("internet") // lan | internet — للعرض فقط؛ القواعد واحدة في الوضعين (SPEC §4.2)
+  reviewNotes      String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  company Company           @relation(fields: [companyId], references: [id])
+  worker  User             @relation("AttendanceWorker", fields: [workerUserId], references: [id])
+  site    Site             @relation(fields: [siteId], references: [id])
+  shift   Shift?           @relation(fields: [shiftId], references: [id])
+
+  @@index([companyId, workerUserId, occurredAt])
+  @@index([companyId, siteId, occurredAt])
+  @@index([companyId, status, occurredAt])
+  @@index([type, occurredAt])
 }
 
 // ─────────────────────────────────────────────────────────────
