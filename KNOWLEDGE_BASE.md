@@ -126,3 +126,11 @@ F-W-M-S/
 - *(2026-10-16، المساعد الأول)*: **Prisma + تغيير المخطط أثناء التطوير**: بعد `prisma db push` + `prisma generate` يجب إعادة تشغيل خادم التطوير كي يحمّل العميل الجدد، وإلا تحدث `PrismaClientValidationError` غامضة.
 - *(2026-10-16، المساعد الأول)*: **تعيين cookie من العميل ممنوع بقاعدة react-hooks/immutability**: الحل المعتمد هو Server Action (`src/i18n/actions.ts`) ثم `router.refresh()`.
 - *(2026-10-16، المساعد الأول)*: اكتشفنا أن ملف `.env` كان متتبَّعاً في git بالخطأ من القالب الأصلي — أُزيل من الفهرس قبل أول push. راجع دائماً `git ls-files | rg env` قبل الدفع.
+- *(2026-10-16، جلسة المساعد الثاني — قاعدة البيانات)*: **أسماء الجداول PascalCase بلا `@@map`** (`PayRule` لا `pay_rule`) — أي استعلام SQL خام يجب أن يستخدم الاسم الحرفية للمخطط؛ لون BASE مذكور في DATABASE_GUIDE بـ snake_case كتسمية منطقية فقط.
+- *(2026-10-16، المساعد الثاني)*: **بناء sqlite3 3.46.1 في هذه البيئة بلا dot-command `.quick_check`** — استعمل `PRAGMA quick_check;` (SQL) بدلها؛ `.help` يعرض `.check`/`.intck` فقط.
+- *(2026-10-16، المساعد الثاني)*: **`_` في SQL `LIKE` = أي حرف واحد** — `name NOT LIKE '_%'` يستبعد *كل* الجداول (لا `_prisma_migrations` فقط). الحل: `NOT GLOB '_*'`.
+- *(2026-10-16، المساعد الثاني)*: **QUIC/UDP مقيّد في Termux/PRoot على أندرويد** — cloudflared يتذبذب (connIndex يسقط، "context canceled")؛ `--protocol http2` عبر TCP يعطي 4 اتصالات مستقرة صفر أخطاء. التوكن في `.env` فقط (`CLOUDFLARE_TUNNEL_TOKEN`).
+- *(2026-10-16، المساعد الثاني)*: **النفق الموحّد `fwms-phone`** (حساب 758fcc…، id `6667afcf-e867-4dc4-9deb-f1f08b1df803`) جاهز للتشغيل — التوجيه العام (DNS route) يبقى **معلّقًا حتى توفر نطاق** (فحص API: الحسابان بلا zones). لا تُنشئ نفقًا ثانيًا بنفس الاسم.
+- *(2026-10-16، المساعد الثاني)*: **`pkill -f "cloudflared tunnel run"` يقتل نفسه** في بيئة التنفيذ هذه (نص الأمر يطابق سطر أوامره) — استعمل `pkill -x cloudflared`.
+- *(2026-10-16، المساعد الثاني)*: **Prisma DateTime في SQLite** يُخزَّن بنص غير مقروء بـ `date()` الخام — في فحوص sqlite3 استعمل `substr(col,1,10)` لعرض التاريخ.
+- *(2026-10-16، المساعد الثاني)*: `prisma migrate dev` يستدعي أمر البذور تلقائيًا (`package.json → prisma.seed = bun ...`) — إن فشل التشغيل (bun مفقود) تُنشأ الـmigration وتطبّق ثم تُعاد البذور يدويًا؛ لا يفسد شيئًا.

@@ -68,7 +68,10 @@ npm start -- -H 0.0.0.0 -p 3000
 # من أي جهاز في نفس الشبكة: http://192.168.x.x:3000
 ```
 
-الإعلان العام عبر الإنترنت يتم عبر Cloudflare Tunnel — **مسؤولية المساعد الأول** (`docs/DEPLOYMENT.md`)؛ لا تفتح منافذ يدويًا ولا تستخدم أدوات نفق عشوائية.
+الإعلان العام عبر الإنترنت عبر **Cloudflare Tunnel الموحّد `fwms-phone`** (حساب 758fcc…، id `6667afcf-e867-4dc4-9deb-f1f08b1df803` — أُنشئ 2026-10-16):
+- التشغيل: `bash infra/termux/run-tunnel.sh` (التوكن في `.env` → `CLOUDFLARE_TUNNEL_TOKEN` — لا يُرفع أبدًا)، ويُشغَّل تلقائيًا مع `infra/termux/start-server.sh`.
+- **إلزامي في هذه البيئة:** `--protocol http2` (مُجبر في السكربت) لأن QUIC/UDP مقيّد في Termux/PRoot.
+- ⏳ **التوجيه العام (DNS route) معلّق حتى توفر نطاق على الحساب** — لا تفتح منافذ يدويًا ولا تستخدم أدوات نفق عشوائية.
 
 ## 3. قواعد إدارة SQLite النافذة
 
@@ -141,23 +144,33 @@ NEXTAUTH_URL="http://192.168.x.x:3000"
 | `pro.rate_25_cap` | 291667 (سنتيم شهري) | (قائم) | — |
 
 **ملاحظات إلزامية:**
-- النسب: خزّنها مضروبة في 10000 كـ Int (مثال 4.48% → 44800) لتجنب الفواصل العائمة، أو نصًا يحلَّل في التطبيق — اختر **Int بالأساس 10000** ووثّقه في `KNOWLEDGE_BASE`.
-- كل سطر يحمل `verifiedBy: null` حتى يراجعه المحاسب — التطبيق يعرضها ك «غير مؤكدة من محاسب».
+- النسب: خزّنها مضروبة في 10000 كـ Int (مثال 4.48% → 44800) لتجنب الفواصل العائمة، أو نصًا يحلَّل في التطبيق — اختر **Int بالأساس 10000** ووثّقه في `KNOWLEDGE_BASE`. **(مُنفَّذ: وحدة `basis_points`.)**
+- كل سطر يحمل `verifiedBy: null` حتى يراجعه المحاسب — التطبيق يعرضها ك «غير مؤكدة من محاسب». **(مُنفَّذ.)**
 - لا تخترع قيمًا ليست في SPEC؛ ما نص SPEC على خلاف فيه → سجّله في KNOWLEDGE_BASE كمسألة مفتوحة.
 
-## 7. النسخ الاحتياطي والاستعادة (مُلزم قبل أول تشغيل إنتاجي)
+**الاتفاقيات المُوثَّقة عند التنفيذ الفعلي (2026-10-16):**
+- القيم «القائمة» بلا تاريخ معلن في الجدول أعلاه تأخذ `effectiveFrom=2025-01-01` (بداية النطاق المرجعي 2025–2026) — قابلة للتعديل بسطر جديد بتاريخ سريان أحدث.
+- `ir.brackets` JSON داخل `valueText` بحقول: `brackets[].{upToMonthlyCents, rateBp, deductMonthlyCents, upToAnnualCents, deductAnnualCents}` (+ `note` و`currency`) — اقرأه كما هو ولا تعدّ صيغته بلا تحديث هذا الدليل.
+- الملف المنفَّذ: `prisma/seeds/pay-rules.ts` (24 قاعدة، idempotent) — موصول بـ `prisma/seeds/seed.ts`.
+- لم تُزرع أرقام مسار SMAG الإضافية (8س يوميًا/2496 سنويًا/ليل 05:00–20:00/26 يوم أساس شهري — SPEC §12) لأن الوحدات المقننة لا تشمل `days` — تُضاف عند بناء محرّك المسارات (المرحلة 6) بقرار مع المحاسب.
 
+## 7. النسخ الاحتياطي والاستعادة (مُلزم قبل أول تشغيل إنتاجي) — ✅ مُفعّل ومُختبَر 2026-10-16
+
+سكربتات جاهزة (مالكها أنت — لا تكتبها من جديد):
+- **`infra/termux/backup-db.sh`**: نسخ آمن عبر SQLite Backup API (`.backup`) + فحص إلزامي (`PRAGMA quick_check` + عدّ الجداول مقابل القاعدة) + دوران: 7 يومية + 4 أسبوعية + 6 شهرية (يُصنَّف تلقائيًا حسب يوم التشغيل: الأحد=weekly، اليوم الأول=monthly).
+- **`infra/termux/restore-db-test.sh [نسخة]`**: اختبار استعادة فعلي — يستعيد أحدث نسخة إلى ملف مؤقت، يطابق كل جدول بسطره، ويقرأ عينات فعلية. **شغّله أسبوعيًا وسجّل ناتجه.**
+- `infra/termux/backup.sh` غلاف توافق للسكربت القديم.
+
+**الجدولة (منفّذة فعليًا):**
 ```bash
-# نسخة احتياطية آمنة (SQLite: استخدم أدوات الضبط بدل نسخ الملف أثناء الكتابة):
-sqlite3 $DB_PATH ".backup('/sdcard/backups/fwms-$(date +%F-%H%M).db')"
-# أو عبر Prisma:
-npx prisma db execute --stdin <<< "VACUUM INTO '/sdcard/backups/fwms-$(date +%F).db';"
+# crontab -l — يومي 03:15 مع flock (منع التداخل):
+15 3 * * * /usr/bin/flock -n /root/F-W-M-S/db/backups/.backup.lock /root/F-W-M-S/infra/termux/backup-db.sh >> /root/F-W-M-S/db/backups/backup.log 2>&1
+# cron يُشغَّل داخل Ubuntu: service cron start (يضيفه start-server.sh تلقائيًا)
 ```
 
-- جدولة يومية عبر `cron` في Termux (`termux-job-scheduler` أو `crond` داخل Ubuntu).
-- احتفظ بـ: 7 يومية + 4 أسبوعية + 6 شهرية (سياسة الدوران بسكربت).
-- **اختبر الاستعادة فعليًا** مرة كل أسبوع على ملف نسخة، ووثّق خطوات النجاح في WORKLOG.
-- نسخة خارج الجهاز (اختياري مبكرًا): `rclone` إلى تخزين سحابي يعتمده صاحب المشروع.
+- الملفات في `db/backups/` (متجاهَلة في git — لا ترفع نسخة أبدًا).
+- نسخة خارج الجهاز (اختياري): `rclone` إلى تخزين سحابي يعتمده صاحب المشروع.
+- ملاحظة بيئة هذه: بناء sqlite3 هنا بلا dot-command `.quick_check` — استعمل `PRAGMA quick_check;` (موثّق في KNOWLEDGE_BASE §9).
 
 ## 8. محظوراتك المطلقة
 
@@ -171,21 +184,22 @@ npx prisma db execute --stdin <<< "VACUUM INTO '/sdcard/backups/fwms-$(date +%F)
 ## 9. أوامرك اليومية السريعة
 
 ```bash
-cd ~/F-W-M-S && git pull origin main
-npx prisma migrate deploy      # تطبيق migrations جديدة من المساعد الأول/منك
-npx prisma studio              # فحص بصري للبيانات (قراءة)
-npm start -- -H 0.0.0.0        # تشغيل الخادم المحلي
-# راقب: pm2 أو nohup لتشغيل مستمر، و termux-wake-lock لمنع نوم الهاتف
+cd /root/F-W-M-S && git pull --ff-only origin main
+npx prisma migrate deploy      # تطبيق migrations جديدة
+npx prisma db seed            # البذور (تشمل pay_rules — prisma/seeds/pay-rules.ts)
+bash infra/termux/start-server.sh   # wake-lock + cron + النفق + الخادم (كله في واحد)
+bash infra/termux/backup-db.sh      # نسخة يدوية عند الحاجة (والنسخة اليومية عبر cron 03:15)
 ```
 
-`termux-wake-lock` **إلزامي** أثناء تشغيل الخادم كي لا يقتل أندرويد العملية.
+- **التشغيل المستمر:** `start-server.sh` (لا حاجة لـ pm2 — nohup كافٍ هنا) + `termux-wake-lock` إلزامي (يضيفه السكربت).
+- سجلات: `db/backups/backup.log` (النسخ) و`db/tunnel.log` (النفق).
 
-## 10. معايير قبول مهمتك الأولى (تُقيّم بها)
+## 10. معايير قبول مهمتك الأولى (تُقيّم بها) — حالة 2026-10-16
 
-- [ ] Ubuntu يعمل داخل Termux مع Node 22 وSQLite.
-- [ ] التطبيق المستنسخ يعمل محليًا و`/api/health` يرجع سليمًا من جهاز آخر بالشبكة.
-- [ ] `prisma migrate deploy` ينفذ كل migrations بلا خطأ.
-- [ ] seeds قواعد الأجور §6 محمّلة بكل أسطرها بتواريخ السريان والمصادر.
-- [ ] نسخة احتياطية آمنة + استعادة مُختبَرة موثّقة في WORKLOG.
-- [ ] `termux-wake-lock` + تشغيل مستمر موثّق (pm2/nohup).
-- [ ] تحديث CHANGELOG + WORKLOG + دفعة أولى إلى GitHub.
+- [x] بيئة Ubuntu تعمل مع Node 22 وSQLite (هنا PRoot Ubuntu 26.04 + Node v22.23 + sqlite3 3.46.1 + bun 1.4.3).
+- [x] التطبيق يعمل محليًا و`/api/health` يرجع `{"status":"ok","database":"ok"}` (من الهاتف نفسه؛ اختبار جهاز آخر بالشبكة يبقى عند توفّره).
+- [x] `prisma migrate deploy`/`migrate dev` ينفّذ كل migrations بلا خطأ (migration أساسي واحد = 13 جدولاً).
+- [x] seeds قواعد الأجور محمّلة: **24 قاعدة** بتواريخ سريان ومصادر + JSON الشرائح الستة.
+- [x] نسخة احتياطية آمنة (cron 03:15 + flock) + استعادة مُختبَرة موثّقة (13 جدولاً مطابقًا سطرًا بسطر).
+- [x] `termux-wake-lock` + تشغيل مستمر عبر `start-server.sh` (wake-lock + cron + نفق + خادم).
+- [x] تحديث CHANGELOG + WORKLOG + KNOWLEDGE_BASE + دفعة إلى GitHub.

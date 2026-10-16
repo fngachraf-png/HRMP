@@ -3,6 +3,7 @@
 // التشغيل: bun prisma/seeds/seed.ts
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { seedPayRules } from "./pay-rules";
 
 const db = new PrismaClient();
 
@@ -118,8 +119,9 @@ async function main() {
     },
   });
 
-  // ⚠️ pay_rules (قواعد الأجور المغربية بتواريخ السريان) مهمة المساعد الثاني:
-  //    راجع docs/DATABASE_GUIDE.md §6 — لا تُخترع هنا.
+  // قواعد الأجور المغربية (pay_rules بتواريخ السريان) — ملكية المساعد الثاني:
+  //    prisma/seeds/pay-rules.ts وفق docs/DATABASE_GUIDE.md §6 (لا تُخترع قيم هنا أبدًا).
+  await seedPayRules(db);
 
   // 7) بنية تنظيمية تجريبية (المرحلة 2 — SPEC §8): فرع + مشروع + مواقع الدار البيضاء + مجموعات
   const branch = await db.branch.upsert({

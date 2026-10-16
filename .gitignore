@@ -69,3 +69,6 @@ server.log
 
 # FWMS test artifacts
 /.cj-*
+
+# FWMS: bun.lock هو ملف القفل المرجعي (package-lock.json بلا داعٍ)
+package-lock.json
