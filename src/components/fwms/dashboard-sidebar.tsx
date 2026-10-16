@@ -9,6 +9,9 @@ import {
   UsersRound,
   ScrollText,
   CalendarClock,
+  CalendarCheck,
+  LayoutTemplate,
+  Repeat,
   MapPin,
   FolderKanban,
   GitBranch,
@@ -38,8 +41,11 @@ const ALL_ITEMS: NavItem[] = [
   { key: "projects", labelKey: "dashboard.projects", icon: FolderKanban, href: "/dashboard/projects" },
   { key: "sites", labelKey: "dashboard.sites", icon: MapPin, href: "/dashboard/sites" },
   { key: "groups", labelKey: "dashboard.groups", icon: UsersRound, href: "/dashboard/groups" },
+  { key: "shiftTemplates", labelKey: "dashboard.shiftTemplates", icon: LayoutTemplate, href: "/dashboard/shift-templates" },
+  { key: "shifts", labelKey: "dashboard.shifts", icon: CalendarClock, href: "/dashboard/shifts" },
+  { key: "recurrences", labelKey: "dashboard.recurrences", icon: Repeat, href: "/dashboard/shift-recurrences" },
+  { key: "mySchedule", labelKey: "dashboard.mySchedule", icon: CalendarCheck, href: "/dashboard/my-schedule" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
-  { key: "scheduling", labelKey: "dashboard.scheduling", icon: CalendarClock, soon: true },
   { key: "attendance", labelKey: "dashboard.attendance", icon: MapPin, soon: true },
   { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, soon: true },
   { key: "reports", labelKey: "dashboard.reports", icon: FileText, soon: true },
@@ -51,14 +57,15 @@ export function DashboardSidebar({ role }: { role: string }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات فقط
-  // عناصر المرحلة 2 (شركات/فروع/مشاريع/مواقع/مجموعات) تظهر لمن يملك company.manage أو platform.manage
+  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه فقط
+  // عناصر المرحلة 2 (فروع/مشاريع/مواقع/مجموعات) لمن يملك company.manage — المرحلة 3 (قوالب/ورديات/تكرارات) لمن يملك scheduling.manage
+  // «برنامجي» (mySchedule) لكل الأدوار المصادقة — self.view (SPEC §3)
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
-    accountant: ["overview", "payroll", "reports", "audit"],
-    admin: ["overview", "branches", "projects", "sites", "groups", "users", "scheduling", "attendance", "payroll", "reports", "audit", "settings"],
-    co_admin: ["overview", "scheduling", "attendance", "reports"],
-    employee: ["overview", "reports"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "users", "attendance", "payroll", "reports", "audit", "settings"],
+    accountant: ["overview", "mySchedule", "payroll", "reports", "audit"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "users", "attendance", "payroll", "reports", "audit", "settings"],
+    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "attendance", "reports"],
+    employee: ["overview", "mySchedule", "reports"],
   };
   const keys = visibleKeys[role] ?? ["overview"];
   const items = ALL_ITEMS.filter((i) => keys.includes(i.key));
@@ -114,7 +121,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.2.0 — Phase 2</span>
+        <span dir="ltr">v0.3.0 — Phase 3</span>
       </div>
     </aside>
   );

@@ -58,6 +58,9 @@ model Company {
   projects      Project[]
   sites         Site[]
   workerGroups  WorkerGroup[]
+  shiftTemplates ShiftTemplate[]
+  shifts        Shift[]
+  shiftRecurrences ShiftRecurrence[]
 
   @@index([status])
 }
@@ -80,6 +83,8 @@ model User {
   memberships  UserMembership[]
   grants       AccountantGrant[]
   auditActions AuditLog[]
+  workerShifts      Shift[] @relation("ShiftWorker")
+  workerRecurrences ShiftRecurrence[] @relation("RecurrenceWorker")
 
   @@index([isActive])
 }
@@ -185,6 +190,8 @@ model Site {
   branch              Branch?              @relation(fields: [branchId], references: [id])
   project             Project?             @relation(fields: [projectId], references: [id])
   verificationPolicies VerificationPolicy[]
+  shifts             Shift[]
+  shiftRecurrences   ShiftRecurrence[]
 
   @@index([companyId, status])
   @@index([companyId, branchId])
@@ -204,6 +211,93 @@ model WorkerGroup {
   company Company @relation(fields: [companyId], references: [id])
 
   @@index([companyId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// الجدولة (SPEC §4.1 و§8 — المرحلة 3)
+// التخزين UTC (startsAt/endsAt) لمنع التعارض بالفترات؛ localDate = يوم البداية بتوقيت الشركة
+// الأرشفة/الإلغاء بدل الحذف (SPEC §11.7) — سجلات الجدولة تُغذي الحضور والأجور لاحقاً
+// ─────────────────────────────────────────────────────────────
+
+/// قالب وردية بحسب القطاع (SPEC §4.1): حراسة (ليل متصل)، بناء (نهار محدد)، نظافة (توزيع متعدد)
+/// startTimeMin/endTimeMin = دقائق من منتصف الليل بتوقيت الشركة؛ endTime ≤ start = وردية تعبر منتصف الليل
+model ShiftTemplate {
+  id           String   @id @default(cuid())
+  companyId    String
+  name         String
+  sector       String   @default("other") // security | construction | cleaning | gardening | crafts | other
+  startTimeMin Int // 0..1439
+  endTimeMin   Int // 0..1439
+  breakMinutes Int      @default(0)
+  notes        String?
+  status       String   @default("active") // active | archived
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company     Company          @relation(fields: [companyId], references: [id])
+  shifts      Shift[]
+  recurrences ShiftRecurrence[]
+
+  @@index([companyId, status])
+  @@index([companyId, sector])
+}
+
+/// وردية مجدولة (إسناد عامل لموقع بوقت محدد) — وحدة منع التعارض: عامل في موقعين بنفس الوقت ممنوع (SPEC §4.1)
+model Shift {
+  id              String    @id @default(cuid())
+  companyId       String
+  workerUserId    String
+  siteId          String
+  templateId      String?
+  recurrenceId    String?
+  localDate       String // "YYYY-MM-DD" بتوقيت الشركة (يوم بداية الوردية)
+  startsAt        DateTime // UTC
+  endsAt          DateTime // UTC — قد تعبر منتصف الليل (SPEC §11.4: وردية 22:00–06:00)
+  breakMinutes    Int       @default(0)
+  status          String    @default("scheduled") // scheduled | cancelled
+  source          String    @default("manual") // manual | recurrence | rotation
+  notes           String?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company    Company          @relation(fields: [companyId], references: [id])
+  worker     User             @relation("ShiftWorker", fields: [workerUserId], references: [id])
+  site       Site             @relation(fields: [siteId], references: [id])
+  template   ShiftTemplate?   @relation(fields: [templateId], references: [id])
+  recurrence ShiftRecurrence? @relation(fields: [recurrenceId], references: [id])
+
+  @@index([companyId, workerUserId, startsAt])
+  @@index([companyId, siteId, startsAt])
+  @@index([companyId, status, startsAt])
+  @@index([recurrenceId])
+}
+
+/// قاعدة ورديات متكررة (fixed: قالب ثابت بأيام أسبوع) أو متناوبة (rotating: دورة قوالب مرتبة) — SPEC §4.1
+model ShiftRecurrence {
+  id               String   @id @default(cuid())
+  companyId        String
+  workerUserId     String
+  siteId           String
+  mode             String   @default("fixed") // fixed | rotating
+  templateId       String? // للنمط fixed
+  rotationJson     String? // للنمط rotating: JSON مصفوفة معرفات قوالب بالترتيب
+  rotationStepDays Int      @default(7) // أيام لكل خطوة في الدورة
+  weekdaysJson     String? // للنمط fixed: JSON [0..6] (0=الأحد)
+  startsOn         String // "YYYY-MM-DD"
+  endsOn           String?
+  status           String   @default("active") // active | archived
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company  Company        @relation(fields: [companyId], references: [id])
+  worker   User           @relation("RecurrenceWorker", fields: [workerUserId], references: [id])
+  site     Site           @relation(fields: [siteId], references: [id])
+  template ShiftTemplate? @relation(fields: [templateId], references: [id])
+  shifts   Shift[]
+
+  @@index([companyId, status])
+  @@index([companyId, workerUserId])
 }
 
 // ─────────────────────────────────────────────────────────────
