@@ -40,8 +40,10 @@ apt update && apt install -y curl git sqlite3 openssl ca-certificates
 # Node 22 LTS (مطلوب لـ Next.js 16):
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 apt install -y nodejs
-npm install -g bun  # اختياري لكن أسرع؛ npm يكفي إن تعذّر
+npm install -g bun  # لتشغيل البذور (prisma seed) — لكن بناء الإنتاج على الهاتف عبر npm (انظر §9 والدرس في KNOWLEDGE_BASE: روابط bun تُرفض من Turbopack هنا)
 ```
+
+> ⚠️ **قاعدة بيئية مُثبتة على هذه الهاتف:** التثبيت والبناء بـ `npm` (جرب الاثنان: npm بنى بنجاح، bun install أعطى `Invalid symlink` في Turbopack). وتذكّر: `bun install --frozen-lockfile` هو ما يفعله CI على Ubuntu (سليم هناك) — لا تقارن نتائج lint المحلية بنتائج CI.
 
 ### 2.3 استنساخ المشروع وتشغيله
 
