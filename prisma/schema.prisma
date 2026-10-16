@@ -1,0 +1,203 @@
+// FWMS — مخطط قاعدة البيانات (SQLite + Prisma)
+// ملكية: المساعد الثاني (تغييرات البنية عبر migrations فقط — راجع docs/DATABASE_GUIDE.md)
+// قواعد نافذة: companyId في كل جدول تشغيلي | المال Int بالسنتيم | UTC في التخزين
+// ملاحظة SQLite: لا enums — القيم النصية تُتحقق في طبقة التطبيق (src/lib/rbac.ts)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// البنية المؤسسية (SPEC §3)
+// ─────────────────────────────────────────────────────────────
+
+/// كيان مالك المنصة (white-label) — ليس حسابًا شخصيًا (SPEC §3.2)
+model PlatformOwner {
+  id              String    @id @default(cuid())
+  legalName       String
+  displayName     String
+  contactEmail    String?
+  contactPhone    String?
+  logoUrl         String?
+  defaultLocale   String    @default("ar")
+  defaultCurrency String    @default("MAD")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  companies Company[]
+}
+
+/// الشركة (المستأجر) — عزل البيانات عبر companyId في كل جدول تشغيلي
+model Company {
+  id              String   @id @default(cuid())
+  platformOwnerId String?
+  legalName       String
+  tradeName       String?
+  taxId           String? // ICE
+  cnssNumber      String?
+  locale          String   @default("ar")
+  timezone        String   @default("Africa/Casablanca")
+  currency        String   @default("MAD")
+  status          String   @default("active") // active | suspended
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  platformOwner PlatformOwner?     @relation(fields: [platformOwnerId], references: [id])
+  memberships   UserMembership[]
+  grants        AccountantGrant[]
+  settings      CompanySettings?
+  payRules      PayRule[]
+  verificationPolicies VerificationPolicy[]
+  auditLogs     AuditLog[]
+
+  @@index([status])
+}
+
+/// هوية المستخدم الواحدة — العلاقة بالشركات عبر العضويات فقط (SPEC §3.1)
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  phone                 String?
+  fullName              String
+  passwordHash          String
+  isActive              Boolean   @default(true)
+  twoFactorEnabled      Boolean   @default(false)
+  locale                String    @default("ar")
+  lastLoginAt           DateTime?
+  sessionsInvalidatedAt DateTime? // إبطال كل جلسات صدرت قبله (خروج فعلي/تدوير أمان)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  memberships  UserMembership[]
+  grants       AccountantGrant[]
+  auditActions AuditLog[]
+
+  @@index([isActive])
+}
+
+/// عضوية المستخدم في شركة بدور واحد (SPEC §3.1) — الجلسة تعمل بشركة نشطة واحدة
+model UserMembership {
+  id        String    @id @default(cuid())
+  userId    String
+  companyId String
+  role      String // super_admin | accountant | admin | co_admin | employee
+  scopeJson String? // نطاق co_admin: JSON نصي لمجموعات/مواقع مسندة
+  isDefault Boolean   @default(false)
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([userId, companyId])
+  @@index([companyId, role])
+}
+
+/// منح المحاسب الخارجي — صريحة، مؤقتة، قابلة للسحب (SPEC §3.3)
+model AccountantGrant {
+  id        String    @id @default(cuid())
+  companyId String
+  userId    String
+  mode      String    @default("external") // internal | external
+  grantedBy String
+  startsAt  DateTime
+  endsAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([companyId, userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// الإعدادات والسياسات
+// ─────────────────────────────────────────────────────────────
+
+/// إعدادات الشركة (SPEC §11): قيم العمل بقيم افتراضية مغربية
+model CompanySettings {
+  id                  String   @id @default(cuid())
+  companyId           String   @unique
+  workWeekHours       Int      @default(44)
+  restDay             Int      @default(5) // 0=الأحد … 5=الجمعة
+  monthlyHoursDivisor Int      @default(191)
+  overtimeCapAnnual   Int? // اختياري (SPEC §11.4)
+  showWagesToSupervisor Boolean @default(false)
+  dualApprovalEnabled Boolean @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+}
+
+/// سياسة التحقق من الهوية عند الحضور (SPEC §4.2) — على مستوى الشركة (والموقع لاحقًا)
+model VerificationPolicy {
+  id               String   @id @default(cuid())
+  companyId        String? // null = مستوى المنصة
+  siteId           String? // مستوى الموقع (المرحلة 2+)
+  policy           String   @default("none") // none | qr | face | qr_and_face | qr_or_face
+  faceAcknowledged Boolean  @default(false) // إقرار المالك القانوني لتفعيل face
+  updatedAt        DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, siteId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// قواعد الأجور (SPEC §11) — بيانات بتواريخ سريان، لا ثوابت كود
+// ─────────────────────────────────────────────────────────────
+
+/// سطر قاعدة أجر واحد:companyId=null يعني مستوى المنصة
+model PayRule {
+  id            String    @id @default(cuid())
+  companyId     String?
+  key           String // مثال: smig.hourly | cnss.employee.short | ir.brackets
+  valueInt      Int? // بالسنتيم أو بنقاط الأساس x10000
+  valueText     String? // للقيم غير الرقمية (JSON الشرائح، الأوقات)
+  unit          String    @default("cents") // cents | basis_points | text | hours
+  effectiveFrom DateTime
+  source        String?
+  verifiedBy    String?
+  verifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, key, effectiveFrom])
+  @@index([key, effectiveFrom])
+}
+
+// ─────────────────────────────────────────────────────────────
+// سجل التدقيق (SPEC §3 و§6) — append-only
+// ─────────────────────────────────────────────────────────────
+
+/// كل فعل حساس: من، متى، ماذا، قبل/بعد، السبب
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String? // null = حدث على مستوى المنصة
+  userId     String? // الفاعل (null = نظام)
+  action     String // auth.login | company.switch | user.create | ...
+  entity     String?
+  entityId   String?
+  beforeJson String? // JSON نصي
+  afterJson  String? // JSON نصي
+  reason     String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}

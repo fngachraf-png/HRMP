@@ -1,0 +1,169 @@
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { Users, Building2, ScrollText, Calculator, Info } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getSession } from "@/lib/auth/session";
+import { db } from "@/lib/db";
+import { LOCALE_COOKIE, resolveLocale } from "@/i18n/config";
+import { getDictionary, tServer } from "@/i18n/get-dictionary";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const dict = getDictionary(resolveLocale(store.get(LOCALE_COOKIE)?.value));
+  return { title: tServer(dict, "dashboard.title") };
+}
+
+function formatDateTime(iso: Date, locale: string): string {
+  const intl =
+    locale === "ar" ? "ar-MA" : locale === "fr" ? "fr-MA" : locale === "es" ? "es-MA" : "en-MA";
+  return new Intl.DateTimeFormat(intl, {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Africa/Casablanca", // SPEC: العرض بتوقيت الشركة
+  }).format(iso);
+}
+
+export default async function DashboardPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get(LOCALE_COOKIE)?.value);
+  const dict = getDictionary(locale);
+  const t = (key: string) => tServer(dict, key);
+
+  const isSuper = session.role === "super_admin";
+  const isCompanyScoped = !isSuper;
+
+  // إحصاءات مقيدة بعزل الشركات (SPEC §3.1): غير المالك يرى شركته فقط
+  const [usersCount, companiesCount, auditCount, payRulesCount, recentAudit] = await Promise.all([
+    db.userMembership.count({
+      where: isCompanyScoped
+        ? { companyId: session.companyId, revokedAt: null }
+        : { revokedAt: null },
+    }),
+    isSuper ? db.company.count({ where: { status: "active" } }) : Promise.resolve(1),
+    db.auditLog.count({ where: isCompanyScoped ? { companyId: session.companyId } : {} }),
+    db.payRule.count({ where: isCompanyScoped ? { OR: [{ companyId: session.companyId }, { companyId: null }] } : {} }),
+    db.auditLog.findMany({
+      where: isCompanyScoped ? { companyId: session.companyId } : {},
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { user: { select: { fullName: true } }, company: { select: { legalName: true } } },
+    }),
+  ]);
+
+  const stats = [
+    { labelKey: "dashboard.cardsUsersTitle", value: usersCount, icon: Users },
+    { labelKey: "dashboard.cardsCompaniesTitle", value: companiesCount, icon: Building2, superOnly: true },
+    { labelKey: "dashboard.cardsAuditTitle", value: auditCount, icon: ScrollText },
+    { labelKey: "dashboard.cardsPayRulesTitle", value: payRulesCount, icon: Calculator },
+  ].filter((s) => !s.superOnly || isSuper);
+
+  const roleBadgeKey = {
+    super_admin: "dashboard.roleSuperAdmin",
+    accountant: "dashboard.roleAccountant",
+    admin: "dashboard.roleAdmin",
+    co_admin: "dashboard.roleCoAdmin",
+    employee: "dashboard.roleEmployee",
+  }[session.role] ?? "dashboard.roleEmployee";
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      {/* الترحيب */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {t("dashboard.welcome")}، {session.name}
+          </h1>
+          <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{t("dashboard.activeCompany")}:</span>
+            <span className="font-semibold text-foreground">{session.companyName}</span>
+            <span aria-hidden>·</span>
+            <span>{t("dashboard.currentRole")}:</span>
+            <Badge variant="secondary" className="font-semibold">{t(roleBadgeKey)}</Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* الإحصاءات */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((s) => (
+          <Card key={s.labelKey} className="fwms-card-hover border-border/70">
+            <CardContent className="flex items-center justify-between gap-3 p-5">
+              <div className="flex flex-col">
+                <span className="text-2xl font-extrabold tabular-nums text-foreground" dir="ltr">
+                  {s.value}
+                </span>
+                <span className="mt-0.5 text-xs font-medium text-muted-foreground">{t(s.labelKey)}</span>
+              </div>
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
+                <s.icon className="size-5" aria-hidden />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* أحدث أحداث التدقيق */}
+      <Card className="border-border/70">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="flex items-center gap-2 text-base font-bold">
+            <ScrollText className="size-4 text-primary" aria-hidden />
+            {t("dashboard.recentAudit")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentAudit.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t("dashboard.noAuditYet")}</p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-border/60">
+              <Table>
+                <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur">
+                  <TableRow>
+                    <TableHead className="text-xs">{t("dashboard.auditTime")}</TableHead>
+                    <TableHead className="text-xs">{t("dashboard.auditAction")}</TableHead>
+                    <TableHead className="text-xs">{t("dashboard.auditActor")}</TableHead>
+                    {isSuper && <TableHead className="text-xs">{t("dashboard.companies")}</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentAudit.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                        {formatDateTime(log.createdAt, locale)}
+                      </TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs" dir="ltr">
+                          {log.action}
+                        </code>
+                      </TableCell>
+                      <TableCell className="text-xs">{log.user?.fullName ?? "system"}</TableCell>
+                      {isSuper && (
+                        <TableCell className="max-w-40 truncate text-xs text-muted-foreground">
+                          {log.company?.legalName ?? "—"}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ملاحظة المرحلة */}
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+        <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p>
+          <strong className="font-bold">{t("dashboard.phaseNoteTitle")}:</strong>{" "}
+          {t("dashboard.phaseNoteBody")}
+        </p>
+      </div>
+    </div>
+  );
+}

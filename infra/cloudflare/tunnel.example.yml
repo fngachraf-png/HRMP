@@ -1,0 +1,13 @@
+# قالب إعداد Cloudflare Tunnel للخادم المحلي (FWMS)
+# ملكية: المساعد الأول — لا أسرار هنا إطلاقًا.
+# الاستخدام: انسخه إلى ~/.cloudflared/config.yml على الهاتف بعد إنشاء النفق.
+
+tunnel: <TUNNEL_ID>
+credentials-file: /home/<user>/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  # الخدمة الرئيسية (تطبيق Next.js على Termux)
+  - hostname: fwms-local.example.com
+    service: http://localhost:3000
+  # قاعدة أخيرة إلزامية
+  - service: http_status:404
