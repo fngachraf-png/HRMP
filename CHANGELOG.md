@@ -18,10 +18,11 @@
 - `infra/termux/backup.sh` (القديم) صار غلافًا يوجّه للسكربت الموحّد — لا ازدواج.
 - **جدولة يومية 03:15 عبر cron** مع `flock` (بلا تداخل) — سطر الجدولة مُوثّق في DATABASE_GUIDE §9 ومُختبَر يدويًا.
 
-**النفق الدائم (Cloudflare Tunnel):**
-- نفق موحّد باسم `fwms-phone` (حساب 758fcc…، id `6667afcf-e867-4dc4-9deb-f1f08b1df803`) — التوكن في `.env` فقط (متجاهَل في git).
-- `infra/termux/run-tunnel.sh` + تشغيل تلقائي مع الخادم عبر `start-server.sh`. **مُجبر على http2 عبر TCP**: QUIC/UDP مقيّد في بيئة أندرويد/PRoot (تذبذب connIndex) — بعد الإجبار: 4 اتصالات مستقرة صفر أخطاء.
-- ⏳ التوجيه العام (DNS route) يحتاج نطاقًا على الحساب — **سؤال موجَّه لصاحب المشروع** (WORKLOG).
+**النفق الدائم (Cloudflare Tunnel):** — ✅ **عنوان عام دائم يعمل 2026-10-16: `https://fwms.tarikc.workers.dev`**
+- **البنية:** Worker `fwms` على الحساب الرئيسي (tarikc) → Workers VPC Service `fwms-app` (مجاني open beta) → نفق موحّد `fwms-phone` (id `1176a92a-e56e-4f63-9509-16368effc0c9`) → خادم الهاتف 127.0.0.1:3000.
+- **استقلالية كاملة (قرار المالك):** كل الموارد على الحساب الرئيسي — حساب المشروع الآخر (dmgames-api) ممنوع الاستخدام وأُزيل منه كل أثر FWMS (حُذف النفق القديم `6667afcf…`).
+- `infra/cloudflare/fwms-proxy/` (wrangler.toml + index.js) + `infra/termux/run-tunnel.sh` — التوكن في `.env` فقط (متجاهَل في git)، وتشغيل تلقائي مع `start-server.sh`.
+- مفاجأة موثّقة: VPC **يعمل مع http2 رغم نص الوثائق بضرورة QUIC** (اختبار فعلي ناجح — QUIC محجوب من شبكة الهاتف) — راجع KNOWLEDGE_BASE §9.
 
 ### Tested (موثَّق في WORKLOG — جلسة المساعد الثاني)
 - `prisma migrate dev` → 13 جدولاً؛ `prisma db seed` مرتين → 24 قاعدة بلا تكرار؛ JSON الشرائح يُحلَّل بستة شرائح وآخرها 37%.

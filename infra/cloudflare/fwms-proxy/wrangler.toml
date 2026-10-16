@@ -1,0 +1,14 @@
+# FWMS — البوابة العامة (Worker مستقل على حساب tarikc الرئيسي)
+# ملكية: المساعد الثاني — راجع docs/DATABASE_GUIDE.md §2.4
+# البنية: ويب عام → Worker (fwms.tarikc.workers.dev) → Workers VPC Service (fwms-app)
+#         → Cloudflare Tunnel (fwms-phone) → خادم Next.js على الهاتف (127.0.0.1:3000)
+# ملاحظة: vpc_services يتطلب بروتوكول QUIC في النفق (وثائق Workers VPC).
+name = "fwms"
+main = "src/index.js"
+compatibility_date = "2026-10-16"
+workers_dev = true
+
+[[vpc_services]]
+binding = "FWMS"
+service_id = "01a14655-e11f-74c1-8456-e1781ce1f967"
+remote = true

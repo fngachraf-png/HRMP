@@ -17,5 +17,6 @@ fi
 # منع نوم الهاتف (إلزامي — وإلا يُقتل النفق)
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock || true
 
-# http2 عبر TCP: QUIC/UDP مقيّد في بيئة أندرويد/PRoot (تذبذب connIndex) — راجع KNOWLEDGE_BASE
+# مؤقت: http2 للاستقرار — QUIC (مطلوب لـ VPC) لا يتصل من الشبكة الحالية (0 اتصالات). يُعاد تقييمه مع شبكة/حساب FWMS المستقل.
+# ملاحظة: http2 كان أثبت أثناء الاختبار المبكر، لكن VPC لا يعمل معه — راجع KNOWLEDGE_BASE.
 exec cloudflared --protocol http2 tunnel run --token "$TOKEN"

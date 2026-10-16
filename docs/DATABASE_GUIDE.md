@@ -70,10 +70,16 @@ npm start -- -H 0.0.0.0 -p 3000
 # من أي جهاز في نفس الشبكة: http://192.168.x.x:3000
 ```
 
-الإعلان العام عبر الإنترنت عبر **Cloudflare Tunnel الموحّد `fwms-phone`** (حساب 758fcc…، id `6667afcf-e867-4dc4-9deb-f1f08b1df803` — أُنشئ 2026-10-16):
+**البنية العامة النهائية (منفّذة ومُختبَرة 2026-10-16 — العنوان: `https://fwms.tarikc.workers.dev`):**
+```
+ويب عام → Worker "fwms" (fwms.tarikc.workers.dev) → Workers VPC Service "fwms-app"
+→ Cloudflare Tunnel "fwms-phone" → خادم Next.js على الهاتف (127.0.0.1:3000)
+```
+- **كل شيء على الحساب الرئيسي (tarikc) — مستقل تماماً.** حساب المشروع الآخر (dmgames-api) **ممنوع** استخدامه لأي مورد FWMS (قرار المالك 2026-10-16).
+- المعرّفات: Tunnel `1176a92a-e56e-4f63-9509-16368effc0c9` | VPC Service `01a14655-e11f-74c1-8456-e1781ce1f967` (127.0.0.1:3000) | Worker `fwms` (الشيفرة في `infra/cloudflare/fwms-proxy/`).
 - التشغيل: `bash infra/termux/run-tunnel.sh` (التوكن في `.env` → `CLOUDFLARE_TUNNEL_TOKEN` — لا يُرفع أبدًا)، ويُشغَّل تلقائيًا مع `infra/termux/start-server.sh`.
-- **إلزامي في هذه البيئة:** `--protocol http2` (مُجبر في السكربت) لأن QUIC/UDP مقيّد في Termux/PRoot.
-- ⏳ **التوجيه العام (DNS route) معلّق حتى توفر نطاق على الحساب** — لا تفتح منافذ يدويًا ولا تستخدم أدوات نفق عشوائية.
+- `NEXTAUTH_URL` في `.env` = العنوان العام أعلاه (لا تغيّره بدون تغيير البوابة).
+- **ممنوع فتح منافذ يدوية أو استخدام أدوات نفق عشوائية.** إعادة النشر: `npx wrangler deploy` داخل `infra/cloudflare/fwms-proxy/` (توكن الحساب الرئيسي + `CLOUDFLARE_ACCOUNT_ID`).
 
 ## 3. قواعد إدارة SQLite النافذة
 
