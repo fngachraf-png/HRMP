@@ -69,7 +69,7 @@ async function main() {
     },
   });
 
-  // 5) مستخدمو الأدوار الخمسة (تجريبيون)
+  // 5) مستخدمو الأدوار الخمسة (تجريبيون) + عاملان إضافيان لسيناريو التغطية السريعة (المرحلة 5)
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   const users = [
     { id: "user-super-admin", email: "owner@fwms.local", fullName: "مالك المنصة", role: "super_admin" },
@@ -77,6 +77,8 @@ async function main() {
     { id: "user-accountant", email: "accountant@demo.ma", fullName: "المسؤول عن المحاسبة", role: "accountant" },
     { id: "user-coadmin", email: "supervisor@demo.ma", fullName: "المشرف الميداني", role: "co_admin" },
     { id: "user-employee", email: "worker@demo.ma", fullName: "عامل ميداني", role: "employee" },
+    { id: "user-employee-2", email: "worker2@demo.ma", fullName: "عاملة ميدانية بديلة", role: "employee" },
+    { id: "user-employee-3", email: "worker3@demo.ma", fullName: "عامل ميداني ثالث", role: "employee" },
   ];
 
   for (const u of users) {
@@ -193,11 +195,62 @@ async function main() {
     });
   }
 
-  console.log("✓ مالك المنصة + الشركة التجريبية + 5 مستخدمين بأدوارهم");
+  // 9) سيناريو التغطية السريعة (المرحلة 5 — SPEC §4.1 و§8): ورديات «اليوم» بتوقيت الشركة
+  //    - worker1 (البوابة 06:00–14:00): العامل الغائب — بلا تسجيل حضور ← مرشّح لسحب بديل
+  //    - worker3 (المركز التجاري 08:00–17:00): متعارض مع نافذة البوابة ← يجب استبعاده من المتاحين
+  //    - worker2: حرّ اليوم ← البديل المتاح
+  //    معرّفات بتاريخ اليوم كي تعيد البذور توليد السيناريو يوميًا (idempotent في نفس اليوم)
+  const tzOffsetMs = (date: Date, timeZone: string): number => {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const parts = dtf.formatToParts(date);
+    const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? "0");
+    return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second")) - date.getTime();
+  };
+  const zonedToUtc = (localDate: string, minutes: number, timeZone: string): Date => {
+    const [y, m, d] = localDate.split("-").map(Number);
+    const naive = new Date(Date.UTC(y, m - 1, d, Math.floor(minutes / 60), minutes % 60));
+    const pass1 = new Date(naive.getTime() - tzOffsetMs(naive, timeZone));
+    return new Date(naive.getTime() - tzOffsetMs(pass1, timeZone));
+  };
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: company.timezone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+
+  const coverageShifts = [
+    { suffix: "gate", workerId: "user-employee", siteId: "site-demo-gate", templateId: "template-demo-cleaning-morning", startTimeMin: 360, endTimeMin: 840, breakMinutes: 30 },
+    { suffix: "mall", workerId: "user-employee-3", siteId: "site-demo-mall", templateId: "template-demo-construction-day", startTimeMin: 480, endTimeMin: 1020, breakMinutes: 60 },
+  ];
+  for (const s of coverageShifts) {
+    const id = `shift-demo-${today}-${s.suffix}`;
+    await db.shift.upsert({
+      where: { id },
+      update: {}, // لا نلمس ورديات أنشأها المستخدمون فعليًا — السيناريو يُنشأ مرة يوميًا
+      create: {
+        id,
+        companyId: company.id,
+        workerUserId: s.workerId,
+        siteId: s.siteId,
+        templateId: s.templateId,
+        localDate: today,
+        startsAt: zonedToUtc(today, s.startTimeMin, company.timezone),
+        endsAt: zonedToUtc(today, s.endTimeMin, company.timezone),
+        breakMinutes: s.breakMinutes,
+        status: "scheduled",
+        source: "manual",
+        notes: "بذور سيناريو التغطية السريعة (المرحلة 5)",
+        createdByUserId: "user-admin",
+      },
+    });
+  }
+
+  console.log("✓ مالك المنصة + الشركة التجريبية + 7 مستخدمين (5 أدوار + عاملان للتغطية)");
   console.log("✓ بنية تنظيمية: فرع الدار البيضاء + مشروع برج + 3 مواقع جغرافية + مجموعتا عمال");
   console.log("✓ جدولة: 4 قوالب ورديات قطاعية (حراسة ليل / بناء نهار / نظافة صباحي+مسائي)");
+  console.log(`✓ سيناريو التغطية ${today}: عامل غائب بالبوابة + بديل متاح + عامل متعارض`);
   console.log(`  كلمة المرور التجريبية للكل: ${DEMO_PASSWORD}`);
-  console.log("  owner@fwms.local | admin@demo.ma | accountant@demo.ma | supervisor@demo.ma | worker@demo.ma");
+  console.log("  owner@fwms.local | admin@demo.ma | accountant@demo.ma | supervisor@demo.ma | worker@demo.ma | worker2@demo.ma | worker3@demo.ma");
 }
 
 main()

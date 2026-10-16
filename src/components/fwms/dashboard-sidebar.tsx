@@ -22,6 +22,7 @@ import {
   Settings,
   ShieldCheck,
   UserCheck,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ const ALL_ITEMS: NavItem[] = [
   { key: "mySchedule", labelKey: "dashboard.mySchedule", icon: CalendarCheck, href: "/dashboard/my-schedule" },
   { key: "myAttendance", labelKey: "dashboard.myAttendance", icon: ClipboardCheck, href: "/dashboard/my-attendance" },
   { key: "attendance", labelKey: "dashboard.attendance", icon: UserCheck, href: "/dashboard/attendance" },
+  { key: "coverage", labelKey: "dashboard.coverage", icon: ArrowLeftRight, href: "/dashboard/coverage" },
   { key: "verificationPolicies", labelKey: "dashboard.verificationPolicies", icon: ShieldCheck, href: "/dashboard/verification-policies" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
   { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, soon: true },
@@ -65,10 +67,10 @@ export function DashboardSidebar({ role }: { role: string }) {
   // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه وحضوره فقط
   // المرحلة 4: «حضوري» للجميع (self.view) — «الحضور» لمن يملك attendance.manage — «السياسات» لمن يملك company.manage
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
     accountant: ["overview", "mySchedule", "myAttendance", "payroll", "reports", "audit"],
-    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
-    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "reports"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
+    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "reports"],
     employee: ["overview", "mySchedule", "myAttendance", "reports"],
   };
   const keys = visibleKeys[role] ?? ["overview"];
@@ -125,7 +127,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.4.0 — Phase 4</span>
+        <span dir="ltr">v0.5.0 — Phase 5</span>
       </div>
     </aside>
   );

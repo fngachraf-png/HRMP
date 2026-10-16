@@ -105,7 +105,7 @@
     "recentAudit": "Últimos eventos de auditoría",
     "noAuditYet": "Aún no hay eventos de auditoría",
     "phaseNoteTitle": "Nota de fase",
-    "phaseNoteBody": "Está usando la versión 0.4.0 (Fase 4: asistencia y geolocalización — entrada/salida por zona geográfica, antifraude, políticas QR/cara y revisión del supervisor). Los módulos restantes se construyen progresivamente según la especificación.",
+    "phaseNoteBody": "Está usando la versión 0.5.0 (Fase 5: cobertura rápida y notificaciones — asignación de un sustituto ante una ausencia con prevención de conflictos de turnos, notificación instantánea en la aplicación y push del navegador, y actualización inmediata de su programa). Los módulos restantes se construyen progresivamente según la especificación.",
     "auditTime": "Hora",
     "auditAction": "Acción",
     "auditActor": "Actor",
@@ -118,7 +118,8 @@
     "roleCoAdmin": "Supervisor de campo",
     "roleEmployee": "Empleado",
     "myAttendance": "Mi asistencia",
-    "verificationPolicies": "Políticas de verificación"
+    "verificationPolicies": "Políticas de verificación",
+    "coverage": "Cobertura rápida"
   },
   "companies": {
     "title": "Empresas",
@@ -326,7 +327,8 @@
     "notesHint": "Nota opcional (p. ej. motivo del cambio)",
     "durationLabel": "Duración",
     "hours": "horas",
-    "minutesShort": "min"
+    "minutesShort": "min",
+    "sourceReplacement": "Cobertura"
   },
   "recurrences": {
     "title": "Turnos recurrentes y rotativos",
@@ -510,5 +512,46 @@
     "qrImage": "Código QR",
     "expiresIn": "Caduca en",
     "kioskNote": "Muestre este código en la pantalla de entrada — rota automáticamente cada 90 segundos."
+  },
+  "coverage": {
+    "title": "Cobertura rápida",
+    "subtitle": "Asignar un sustituto ante una ausencia — solo disponibles sin conflicto, avisado al instante",
+    "date": "Fecha",
+    "boardTitle": "Turnos del día",
+    "totalShifts": "turnos",
+    "present": "presentes",
+    "absent": "ausencias probables",
+    "empty": "No hay turnos programados en esta fecha",
+    "attIn": "Entrada registrada",
+    "attOut": "Salida registrada",
+    "attPending": "Pendiente de revisión",
+    "attNone": "Sin registro",
+    "absentLikely": "30 minutos tras el inicio sin registro — se recomienda sustitución",
+    "replaceAction": "Asignar sustituto",
+    "replaceTitle": "Asignar sustituto al turno",
+    "replaceFor": "Sitio:",
+    "replaceWindow": "Horario:",
+    "noAvailable": "No hay trabajadores disponibles para este horario (todos en conflicto)",
+    "freeAllDay": "Libre todo el día",
+    "sameDayShifts": "Sus turnos hoy",
+    "reason": "Motivo (opcional — se registra en la auditoría)",
+    "reasonPlaceholder": "Ej.: ausencia no comunicada",
+    "confirmReplace": "Confirmar sustitución",
+    "replaced": "Sustituto asignado y avisado al instante",
+    "conflictRejected": "Rechazado: el sustituto tiene un turno en conflicto",
+    "availableLoadError": "No se pudieron cargar los trabajadores disponibles",
+    "replaceError": "No se pudo asignar el sustituto"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "empty": "Aún no hay notificaciones",
+    "markAllRead": "Marcar todo como leído",
+    "enablePush": "Activar notificaciones del navegador",
+    "replaceLine1": "Se le ha asignado un turno de cobertura en",
+    "replaceLine2": "el",
+    "replaceFrom": "de",
+    "replaceTo": "a",
+    "replaceInsteadOf": "en lugar de",
+    "unknownType": "Nueva notificación"
   }
 }

@@ -62,6 +62,7 @@ model Company {
   shifts        Shift[]
   shiftRecurrences ShiftRecurrence[]
   attendanceEvents AttendanceEvent[]
+  notifications Notification[]
 
   @@index([status])
 }
@@ -87,6 +88,8 @@ model User {
   workerShifts      Shift[] @relation("ShiftWorker")
   workerRecurrences ShiftRecurrence[] @relation("RecurrenceWorker")
   attendanceEvents AttendanceEvent[] @relation("AttendanceWorker")
+  notifications  Notification[] @relation("NotificationRecipient")
+  pushDevices    Device[] @relation("DeviceOwner")
 
   @@index([isActive])
 }
@@ -258,7 +261,7 @@ model Shift {
   endsAt          DateTime // UTC — قد تعبر منتصف الليل (SPEC §11.4: وردية 22:00–06:00)
   breakMinutes    Int       @default(0)
   status          String    @default("scheduled") // scheduled | cancelled
-  source          String    @default("manual") // manual | recurrence | rotation
+  source          String    @default("manual") // manual | recurrence | rotation | replacement
   notes           String?
   createdByUserId String?
   createdAt       DateTime  @default(now())
@@ -435,4 +438,45 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([userId, createdAt])
   @@index([action, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// التغطية السريعة والإشعارات (SPEC §4.1 و§8 — المرحلة 5)
+// سحب بديل عند الغياب + إشعار فوري للبديل + تحديث برنامجه
+// ─────────────────────────────────────────────────────────────
+
+/// إشعار داخل التطبيق: type + payloadJson — النص يُبنى في الواجهة بلغة المستخدم (i18n)
+/// الإرسال «الفوري» عبر: (1) استطلاع الواجهة كل 20ث (2) محوّل Web Push قابل للتبديل (SPEC §7)
+model Notification {
+  id          String    @id @default(cuid())
+  companyId   String
+  userId      String // المستقبِل
+  type        String // shift_replacement_assigned | shift_replacement_note | ...
+  payloadJson String? // {siteName, localDate, startLabel, endLabel, ...}
+  readAt      DateTime? // null = غير مقروء
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation("NotificationRecipient", fields: [userId], references: [id])
+
+  @@index([companyId, userId, createdAt])
+  @@index([userId, readAt])
+}
+
+/// اشتراك دفع لمتصفح/جهاز (SPEC: كيان devices): Web Push (VAPID) — محوّل قابل للتبديل (SPEC §7)
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique // عنوان اشتراك Web Push (RFC 8030)
+  p256dh    String // مفتاح تشفير الاشتراك
+  auth      String // سر التفويض
+  userAgent String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("DeviceOwner", fields: [userId], references: [id])
+
+  @@index([userId, isActive])
 }

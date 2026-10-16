@@ -33,6 +33,7 @@ const SOURCE_LABEL_KEYS: Record<string, string> = {
   manual: "shifts.sourceManual",
   recurrence: "shifts.sourceRecurrence",
   rotation: "shifts.sourceRotation",
+  replacement: "shifts.sourceReplacement", // المرحلة 5: وردية تغطية مُسحوبة كبديل
 };
 
 export function MyScheduleView({ today }: { today: string }) {

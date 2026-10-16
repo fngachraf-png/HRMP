@@ -5,6 +5,7 @@ import { DashboardSidebar } from "@/components/fwms/dashboard-sidebar";
 import { CompanySwitcher } from "@/components/fwms/company-switcher";
 import { LogoutButton } from "@/components/fwms/logout-button";
 import { LangSwitcher } from "@/components/fwms/lang-switcher";
+import { NotificationBell } from "@/components/fwms/notification-bell";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +30,8 @@ export default async function DashboardLayout({
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-3 backdrop-blur-md sm:px-5">
           <CompanySwitcher companies={companies} activeId={session.companyId} />
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* المرحلة 5: جرس الإشعارات — لكل مستخدم (self.view) — استطلاع 20ث/120ث */}
+            <NotificationBell />
             <LangSwitcher />
             <div className="hidden items-center gap-2 text-end sm:flex">
               <div className="flex flex-col leading-tight">

@@ -105,7 +105,7 @@
     "recentAudit": "Derniers événements d'audit",
     "noAuditYet": "Aucun événement d'audit pour l'instant",
     "phaseNoteTitle": "Note de phase",
-    "phaseNoteBody": "Vous utilisez la version 0.4.0 (Phase 4 : présence et géorepérage — entrée/sortie par zone géographique, anti-fraude, politiques QR/visage et révision du superviseur). Les modules suivants seront construits progressivement selon la spécification.",
+    "phaseNoteBody": "Vous utilisez la version 0.5.0 (Phase 5 : remplacement rapide et notifications — remplacement d'un agent absent avec prévention des conflits de poste, notification instantanée dans l'application et push navigateur, et mise à jour immédiate de son programme). Les modules suivants seront construits progressivement selon la spécification.",
     "auditTime": "Heure",
     "auditAction": "Action",
     "auditActor": "Acteur",
@@ -118,7 +118,8 @@
     "roleCoAdmin": "Superviseur terrain",
     "roleEmployee": "Employé",
     "myAttendance": "Mon pointage",
-    "verificationPolicies": "Politiques de vérification"
+    "verificationPolicies": "Politiques de vérification",
+    "coverage": "Remplacement rapide"
   },
   "companies": {
     "title": "Sociétés",
@@ -326,7 +327,8 @@
     "notesHint": "Note facultative (motif de la modification par exemple)",
     "durationLabel": "Durée",
     "hours": "heures",
-    "minutesShort": "min"
+    "minutesShort": "min",
+    "sourceReplacement": "Remplacement"
   },
   "recurrences": {
     "title": "Postes récurrents et alternés",
@@ -510,5 +512,46 @@
     "qrImage": "Code QR",
     "expiresIn": "Expire dans",
     "kioskNote": "Affichez ce code sur l'écran d'entrée — il se renouvelle automatiquement toutes les 90 secondes."
+  },
+  "coverage": {
+    "title": "Remplacement rapide",
+    "subtitle": "Tirer un remplaçant en cas d'absence — disponibles sans conflit, prévenu instantanément",
+    "date": "Date",
+    "boardTitle": "Postes du jour",
+    "totalShifts": "postes",
+    "present": "présents",
+    "absent": "absences probables",
+    "empty": "Aucun poste planifié à cette date",
+    "attIn": "Entrée pointée",
+    "attOut": "Sortie pointée",
+    "attPending": "En attente de validation",
+    "attNone": "Sans pointage",
+    "absentLikely": "30 minutes écoulées sans pointage — remplacement conseillé",
+    "replaceAction": "Tirer un remplaçant",
+    "replaceTitle": "Remplacement du poste",
+    "replaceFor": "Site :",
+    "replaceWindow": "Créneau :",
+    "noAvailable": "Aucun agent disponible pour ce créneau (tous en conflit)",
+    "freeAllDay": "Libre toute la journée",
+    "sameDayShifts": "Ses postes du jour",
+    "reason": "Motif (optionnel — consigné dans l'audit)",
+    "reasonPlaceholder": "Ex. : absence non signalée",
+    "confirmReplace": "Confirmer le remplacement",
+    "replaced": "Remplaçant tiré et notifié instantanément",
+    "conflictRejected": "Refusé : le remplaçant a un poste en conflit",
+    "availableLoadError": "Impossible de charger les agents disponibles",
+    "replaceError": "Échec du remplacement"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification pour l'instant",
+    "markAllRead": "Tout marquer comme lu",
+    "enablePush": "Activer les notifications du navigateur",
+    "replaceLine1": "Un poste de remplacement vous est assigné sur",
+    "replaceLine2": "le",
+    "replaceFrom": "de",
+    "replaceTo": "à",
+    "replaceInsteadOf": "à la place de",
+    "unknownType": "Nouvelle notification"
   }
 }

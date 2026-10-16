@@ -105,7 +105,7 @@
     "recentAudit": "Latest audit events",
     "noAuditYet": "No audit events yet",
     "phaseNoteTitle": "Phase note",
-    "phaseNoteBody": "You are using version 0.4.0 (Phase 4: attendance & geofencing — geofenced check-in/out, anti-spoofing, QR/face policies, and supervisor review). Remaining modules are built progressively per the specification.",
+    "phaseNoteBody": "You are using version 0.5.0 (Phase 5: quick coverage & notifications — pull a replacement for an absent worker with shift-conflict prevention, instant in-app and browser-push notification, and immediate schedule update). Remaining modules are built progressively per the specification.",
     "auditTime": "Time",
     "auditAction": "Action",
     "auditActor": "Actor",
@@ -118,7 +118,8 @@
     "roleCoAdmin": "Field supervisor",
     "roleEmployee": "Employee",
     "myAttendance": "My attendance",
-    "verificationPolicies": "Verification policies"
+    "verificationPolicies": "Verification policies",
+    "coverage": "Quick coverage"
   },
   "companies": {
     "title": "Companies",
@@ -326,7 +327,8 @@
     "notesHint": "Optional note (e.g. reason for the change)",
     "durationLabel": "Duration",
     "hours": "hours",
-    "minutesShort": "min"
+    "minutesShort": "min",
+    "sourceReplacement": "Coverage"
   },
   "recurrences": {
     "title": "Recurring & Rotating Shifts",
@@ -510,5 +512,46 @@
     "qrImage": "QR code",
     "expiresIn": "Expires in",
     "kioskNote": "Show this code on the door screen — it rotates automatically every 90 seconds."
+  },
+  "coverage": {
+    "title": "Quick coverage",
+    "subtitle": "Pull a replacement for an absence — conflict-free workers only, notified instantly",
+    "date": "Date",
+    "boardTitle": "Today's shifts",
+    "totalShifts": "shifts",
+    "present": "present",
+    "absent": "likely absent",
+    "empty": "No scheduled shifts on this date",
+    "attIn": "Checked in",
+    "attOut": "Checked out",
+    "attPending": "Pending review",
+    "attNone": "No check-in",
+    "absentLikely": "30 minutes past start with no check-in — replacement advised",
+    "replaceAction": "Pull replacement",
+    "replaceTitle": "Pull a replacement",
+    "replaceFor": "Site:",
+    "replaceWindow": "Window:",
+    "noAvailable": "No available workers for this window (all conflicted)",
+    "freeAllDay": "Free all day",
+    "sameDayShifts": "Their shifts today",
+    "reason": "Reason (optional — recorded in audit)",
+    "reasonPlaceholder": "E.g. unreported absence",
+    "confirmReplace": "Confirm replacement",
+    "replaced": "Replacement pulled and notified instantly",
+    "conflictRejected": "Rejected: replacement has a conflicting shift",
+    "availableLoadError": "Failed to load available workers",
+    "replaceError": "Failed to pull replacement"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "enablePush": "Enable browser notifications",
+    "replaceLine1": "A coverage shift has been assigned to you at",
+    "replaceLine2": "on",
+    "replaceFrom": "from",
+    "replaceTo": "to",
+    "replaceInsteadOf": "instead of",
+    "unknownType": "New notification"
   }
 }
