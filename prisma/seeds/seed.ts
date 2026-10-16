@@ -177,8 +177,25 @@ async function main() {
     });
   }
 
+  // 8) قوالب ورديات بحسب القطاع (المرحلة 3 — SPEC §4.1): حراسة ليل متصل، بناء نهار محدد، نظافة توزيع متعدد
+  //    endTime ≤ start = وردية تعبر منتصف الليل (الحراسة الليلية)
+  const demoTemplates = [
+    { id: "template-demo-security-night", name: "حراسة — ليل متصل", sector: "security", startTimeMin: 1320, endTimeMin: 360, breakMinutes: 0, notes: "22:00–06:00 تعبر منتصف الليل (SPEC §11.4)" },
+    { id: "template-demo-construction-day", name: "بناء — نهار محدد", sector: "construction", startTimeMin: 480, endTimeMin: 1020, breakMinutes: 60, notes: "08:00–17:00 مع استراحة ساعة" },
+    { id: "template-demo-cleaning-morning", name: "نظافة — فوج صباحي", sector: "cleaning", startTimeMin: 360, endTimeMin: 840, breakMinutes: 30, notes: "06:00–14:00" },
+    { id: "template-demo-cleaning-evening", name: "نظافة — فوج مسائي", sector: "cleaning", startTimeMin: 840, endTimeMin: 1320, breakMinutes: 30, notes: "14:00–22:00 — يُستخدم مع الصباحي لقاعدة تناوب" },
+  ];
+  for (const t of demoTemplates) {
+    await db.shiftTemplate.upsert({
+      where: { id: t.id },
+      update: {},
+      create: { ...t, companyId: company.id },
+    });
+  }
+
   console.log("✓ مالك المنصة + الشركة التجريبية + 5 مستخدمين بأدوارهم");
   console.log("✓ بنية تنظيمية: فرع الدار البيضاء + مشروع برج + 3 مواقع جغرافية + مجموعتا عمال");
+  console.log("✓ جدولة: 4 قوالب ورديات قطاعية (حراسة ليل / بناء نهار / نظافة صباحي+مسائي)");
   console.log(`  كلمة المرور التجريبية للكل: ${DEMO_PASSWORD}`);
   console.log("  owner@fwms.local | admin@demo.ma | accountant@demo.ma | supervisor@demo.ma | worker@demo.ma");
 }

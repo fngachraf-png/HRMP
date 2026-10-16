@@ -19,12 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/i18n/provider";
 
-/** خطأ API برمز الخطأ من الخادم (forbidden/invalid_input/...) */
+/** خطأ API برمز الخطأ من الخادم (forbidden/invalid_input/shift_conflict/...) + حمولة الخطأ إن وُجدت */
 export class ApiError extends Error {
   code: string;
-  constructor(code: string) {
+  data: unknown;
+  constructor(code: string, data?: unknown) {
     super(code);
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -38,7 +40,7 @@ export async function apiRequest<T = unknown>(url: string, init?: RequestInit): 
   }
   const data = (await res.json().catch(() => null)) as { error?: string } | null;
   if (!res.ok) {
-    throw new ApiError(data?.error ?? "request_failed");
+    throw new ApiError(data?.error ?? "request_failed", data);
   }
   return data as T;
 }
@@ -49,6 +51,9 @@ export function apiErrorMessage(t: (key: string) => string, error: unknown): str
   if (code === "forbidden") return t("common.forbidden");
   if (code === "invalid_input" || code === "invalid_reference") return t("common.invalidInput");
   if (code === "network") return t("common.networkError");
+  if (code === "same_day_only") return t("shifts.sameDayOnly");
+  if (code === "shift_conflict") return t("shifts.conflictTitle");
+  if (code === "invalid_duration" || code === "too_long") return t("common.invalidInput");
   return t("common.operationFailed");
 }
 
