@@ -62,3 +62,7 @@ server.log
 /examples/
 /tests/
 /bun-x/
+
+# scaffold artifacts (not part of FWMS)
+/download/
+/mini-services/
