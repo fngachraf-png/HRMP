@@ -4,7 +4,7 @@
 // + البنود اليدوية (مكافأة/بدل نقل/وجبات/خصم) على المسودة وقيد المراجعة + التفصيل اليومي
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, CalendarClock, LoaderCircle, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, FileDown, LoaderCircle, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -248,6 +248,36 @@ export function PayrollPeriodView({ periodId, canApprove }: { periodId: string; 
   const editable = detail ? detail.period.status !== "approved" : false;
   const money = (c: number) => formatMoney(c, locale);
 
+  // المرحلة 7: تصدير ملخص أجور الفترة (PDF/DOCX) بلغة المستخدم — عن الفترات المعتمدة فقط
+  const [summaryExporting, setSummaryExporting] = useState<string | null>(null);
+  async function exportSummary(format: string) {
+    if (!detail) return;
+    setSummaryExporting(format);
+    try {
+      const res = await apiRequest<{ downloadUrl: string; fileName: string }>("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "payroll_summary", targetId: detail.period.id, format, language: locale }),
+      });
+      const file = await fetch(res.downloadUrl, { cache: "no-store" });
+      if (!file.ok) throw new Error("download_failed");
+      const blob = await file.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ description: t("reports.exportOk") });
+    } catch {
+      toast({ variant: "destructive", description: t("reports.exportFailed") });
+    } finally {
+      setSummaryExporting(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title={`${t("payroll.periodDetail")} — ${detail?.period.label ?? ""}`} subtitle={t("payroll.periodDetailSubtitle")}>
@@ -261,6 +291,12 @@ export function PayrollPeriodView({ periodId, canApprove }: { periodId: string; 
           <RefreshCcw className="size-3.5" aria-hidden />
           {t("common.retry")}
         </Button>
+        {detail?.period.status === "approved" && (["pdf", "docx"] as const).map((f) => (
+          <Button key={f} size="sm" variant="outline" disabled={summaryExporting !== null} onClick={() => void exportSummary(f)} className="gap-1.5">
+            {summaryExporting === f ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <FileDown className="size-3.5" aria-hidden />}
+            {t("reports.export")} {f.toUpperCase()}
+          </Button>
+        ))}
       </PageHeader>
 
       <ListState loading={loading} error={error} empty={!loading && !error && !detail} onRetry={() => void load()} />

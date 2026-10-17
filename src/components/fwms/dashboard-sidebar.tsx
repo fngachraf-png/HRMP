@@ -65,7 +65,7 @@ const ALL_ITEMS: NavItem[] = [
   { key: "holidays", labelKey: "dashboard.holidays", icon: CalendarDays, href: "/dashboard/holidays" },
   { key: "myPayslips", labelKey: "dashboard.myPayslips", icon: ReceiptText, href: "/dashboard/my-payslips" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
-  { key: "reports", labelKey: "dashboard.reports", icon: FileText, soon: true },
+  { key: "reports", labelKey: "dashboard.reports", icon: FileText, href: "/dashboard/reports" },
   { key: "audit", labelKey: "dashboard.audit", icon: ScrollText, soon: true },
   { key: "settings", labelKey: "dashboard.settings", icon: Settings, soon: true },
 ];
@@ -139,7 +139,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.7.0 — Phase 6</span>
+        <span dir="ltr">v0.8.0 — Phase 7</span>
       </div>
     </aside>
   );

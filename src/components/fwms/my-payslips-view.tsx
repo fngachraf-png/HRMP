@@ -1,8 +1,9 @@
 "use client";
 
 // FWMS — «أجوري» (SPEC §4.5): كشوف العامل المعتمدة — محفظة شفافة تشرح كيف حُسب كل مبلغ (SPEC §4.3)
+// المرحلة 7: أزرار تصدير القسيمة PDF/DOCX/PNG بلغة المستخدم (SPEC §4.4.1)
 import { useCallback, useEffect, useState } from "react";
-import { LoaderCircle, ReceiptText, RefreshCcw } from "lucide-react";
+import { FileDown, LoaderCircle, ReceiptText, RefreshCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,9 +69,30 @@ function hoursLabel(minutes: number): string {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
+/** تصدير قسيمة وتنزيلها من نسختها الثابتة (SPEC §4.4.1) */
+async function exportPayslip(payslipId: string, format: string, language: string): Promise<void> {
+  const res = await apiRequest<{ downloadUrl: string; fileName: string; reused: boolean }>("/api/reports/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "payslip", targetId: payslipId, format, language }),
+  });
+  const file = await fetch(res.downloadUrl, { cache: "no-store" });
+  if (!file.ok) throw new Error("download_failed");
+  const blob = await file.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = res.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function MyPayslipsView() {
   const { t, locale } = useI18n();
   const { toast } = useToast();
+  const [exporting, setExporting] = useState<string | null>(null);
 
   const [payslips, setPayslips] = useState<MyPayslip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +133,18 @@ export function MyPayslipsView() {
   }
 
   const money = (c: number) => formatMoney(c, locale);
+
+  async function doExport(payslipId: string, format: string) {
+    setExporting(format);
+    try {
+      await exportPayslip(payslipId, format, locale);
+      toast({ description: t("reports.exportOk") });
+    } catch {
+      toast({ variant: "destructive", description: t("reports.exportFailed") });
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -203,6 +237,23 @@ export function MyPayslipsView() {
               <div className="flex items-center justify-between font-bold">
                 <span>{t("myPayslips.net")}</span>
                 <span className="tabular-nums text-primary" dir="ltr">{money(detail.netCents)}</span>
+              </div>
+              <Separator />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("reports.format")}:</span>
+                {(["pdf", "docx", "png"] as const).map((f) => (
+                  <Button
+                    key={f}
+                    size="sm"
+                    variant="outline"
+                    disabled={exporting !== null}
+                    onClick={() => void doExport(detail.id, f)}
+                    className="gap-1.5 uppercase"
+                  >
+                    {exporting === f ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <FileDown className="size-3.5" aria-hidden />}
+                    {f}
+                  </Button>
+                ))}
               </div>
             </div>
           )}

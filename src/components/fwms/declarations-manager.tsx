@@ -64,6 +64,36 @@ const STATUS_FLOW = ["draft", "generated", "accountant_review", "approved", "exp
 export function DeclarationsManager() {
   const { t, locale } = useI18n();
   const { toast } = useToast();
+  const [complianceBusy, setComplianceBusy] = useState<string | null>(null);
+
+  // المرحلة 7: تقرير المطابقة PDF/DOCX بلغة المستخدم (كشوف معتمدة ↔ الملف الرسمي)
+  async function exportCompliance(format: string) {
+    if (!detail) return;
+    setComplianceBusy(format);
+    try {
+      const res = await apiRequest<{ downloadUrl: string; fileName: string }>("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "compliance_report", targetId: detail.id, format, language: locale }),
+      });
+      const file = await fetch(res.downloadUrl, { cache: "no-store" });
+      if (!file.ok) throw new Error("download_failed");
+      const blob = await file.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ description: t("reports.exportOk") });
+    } catch {
+      toast({ variant: "destructive", description: t("reports.exportFailed") });
+    } finally {
+      setComplianceBusy(null);
+    }
+  }
 
   const [rows, setRows] = useState<DeclarationRow[]>([]);
   const [periods, setPeriods] = useState<PeriodRow[]>([]);
@@ -440,6 +470,29 @@ export function DeclarationsManager() {
                           </div>
                         );
                       })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* المرحلة 7 — تقرير المطابقة (SPEC §4.6): يُصدَّر مع كل تصريح */}
+                {["approved", "exported", "filed"].includes(detail.status) && (
+                  <Card>
+                    <CardHeader><CardTitle className="text-sm">{t("reports.kind.compliance_report")}</CardTitle></CardHeader>
+                    <CardContent className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">{t("reports.doc.complianceIntro")}</span>
+                      {(["pdf", "docx"] as const).map((f) => (
+                        <Button
+                          key={f}
+                          size="sm"
+                          variant="outline"
+                          disabled={complianceBusy !== null}
+                          onClick={() => void exportCompliance(f)}
+                          className="gap-1.5 uppercase"
+                        >
+                          {complianceBusy === f ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <FileDown className="size-3.5" aria-hidden />}
+                          {f}
+                        </Button>
+                      ))}
                     </CardContent>
                   </Card>
                 )}

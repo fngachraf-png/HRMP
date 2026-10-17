@@ -72,6 +72,7 @@ model Company {
   regimeAssignments    RegimeAssignment[]
   declarationSpecs     DeclarationSpec[]
   declarations         Declaration[]
+  generatedDocuments   GeneratedDocument[]
 
   @@index([status])
 }
@@ -378,6 +379,7 @@ model CompanySettings {
   overtimeCapAnnual     Int? // اختياري (SPEC §11.4)
   showWagesToSupervisor Boolean  @default(false)
   dualApprovalEnabled   Boolean  @default(false)
+  showEmployerShareToEmployee Boolean @default(false) // إظهار حصة المشغّل في قسيمة العامل (SPEC §4.4.1: الافتراضي الإخفاء)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -854,4 +856,45 @@ model DeclarationReceipt {
   declaration Declaration @relation(fields: [declarationId], references: [id])
 
   @@index([declarationId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// التقارير والتصدير (SPEC §4.4.1 — المرحلة 7)
+// ⚠️ ملكية المخطط للمساعد الثاني (COORDINATION §3) — نُفِّذت هنا لسابقة المراحل 4/5/6
+// وغياب بيئة المساعد الثاني — **يُرجى مراجعتها واعتمادها + migration موقّعة**.
+// القواعد النافذة: التوليد في الخادم دائمًا | كل تصدير يُسجَّل (من، ماذا، متى)
+// | المستند المعتمد نسخة ثابتة لا تتغير (fileBytes + fileHash) — التصحيح يولّد إصدارًا
+// مرقّمًا جديدًا لا يعدّل القديم | علامة تحقق: رقم مرجعي + QR يتحقق منه الخادم.
+// ─────────────────────────────────────────────────────────────
+
+/// مستند مُولَّد (SPEC §5: generated_documents): نوع، لغة، صيغة، منشئ، تجزئة hash
+/// kinds: payslip | payroll_summary | attendance_statement | hours_statement
+///        | declarations_summary | compliance_report | platform_summary
+/// targetId: payslipId | periodId | declarationId | workerUserId (بيان حضور) | "platform"
+model GeneratedDocument {
+  id              String   @id @default(cuid())
+  companyId       String
+  kind            String
+  format          String // pdf | docx | png
+  language        String // ar | fr | en | es
+  targetId        String
+  targetLabel     String // PS-202610-0001 | 2026-10 | رقم التصريح... (للتدقيق والعرض)
+  subjectUserId   String? // صاحب المستند إن كان شخصيًا (قسيمة/بيان حضور) — يرى العامل مستنداته
+  version         Int      @default(1) // إصدار يتصاعد عند تغيّر المحتوى — القديم لا يُمسّ
+  refNumber       String // RD-YYMMDD-XXXX فريد داخل الشركة — يُطبع QR عليه
+  contentHash     String // SHA-256 للبيانات المجمدة (مستقل عن الصيغة) — يُطبع بالمستند وفي QR
+  fileHash        String // SHA-256 للمحتوى المُخزَّن — تحقق QR (غير معدَّل)
+  fileSize        Int
+  fileBytes       Bytes // النسخة الثابتة نفسها (SPEC §4.4.1: تُحفظ نسخة ثابتة)
+  optionsJson     String? // خيارات التوليد (includeEmployerShare مثلًا)
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, kind, targetId, format, language, version])
+  @@unique([companyId, refNumber])
+  @@index([companyId, createdAt])
+  @@index([targetId])
+  @@index([subjectUserId])
 }
