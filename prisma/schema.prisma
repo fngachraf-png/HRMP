@@ -63,6 +63,11 @@ model Company {
   shiftRecurrences ShiftRecurrence[]
   attendanceEvents AttendanceEvent[]
   notifications Notification[]
+  holidays      Holiday[]
+  employeeProfiles EmployeeProfile[]
+  payPeriods    PayPeriod[]
+  payslips      Payslip[]
+  ledgerEntries LedgerEntry[]
 
   @@index([status])
 }
@@ -90,6 +95,8 @@ model User {
   attendanceEvents AttendanceEvent[] @relation("AttendanceWorker")
   notifications  Notification[] @relation("NotificationRecipient")
   pushDevices    Device[] @relation("DeviceOwner")
+  employeeProfiles EmployeeProfile[] @relation("EmployeeProfileUser")
+  payslips      Payslip[] @relation("PayslipWorker")
 
   @@index([isActive])
 }
@@ -479,4 +486,165 @@ model Device {
   user User @relation("DeviceOwner", fields: [userId], references: [id])
 
   @@index([userId, isActive])
+}
+
+// ─────────────────────────────────────────────────────────────
+// الأجور (SPEC §4.3 و§11 — المرحلة 6أ+6ب)
+// ⚠️ ملكية المخطط للمساعد الثاني (COORDINATION §3) — نُفِّذت هنا لسابقة المرحلتين 4/5
+// وغياب بيئة المساعد الثاني — **يُرجى مراجعتها واعتمادها + migration موقّعة (4+5+6 معًا)**.
+// القواعد النافذة: المال Int بالسنتيم | القواعد من pay_rules بتواريخ سريان | النسب أساس 10000
+// الكشف المعتمد يُقفل ولا يُعدَّل إلا بقيد تصحيح جديد (SPEC §4.3) — snapshotJson نسخة ثابتة
+// ─────────────────────────────────────────────────────────────
+
+/// عطلة رسمية (SPEC §11.5 و§11.4): لكل شركة بتاريخ مؤكد — يدخلها admin كل سنة
+/// (العطل الدينية متغيرة برؤية الهلال — لا تُخمَّن أبدًا)؛ يوم العطلة يُعامل كيوم راحة في الإضافي (SPEC §11.4)
+model Holiday {
+  id        String   @id @default(cuid())
+  companyId String
+  localDate String // "YYYY-MM-DD"
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, localDate])
+  @@index([companyId, localDate])
+}
+
+/// ملف أجر العامل في الشركة (SPEC §4.3 أنظمة الاحتساب + §11.6 الأعباء العائلية)
+/// payType: hourly (دقائق فعلية من الدخول للخروج) | daily (باليوم/الوردية) | monthly (شهري مع خصم الغياب)
+model EmployeeProfile {
+  id              String    @id @default(cuid())
+  companyId       String
+  userId          String
+  payType         String    @default("hourly") // hourly | daily | monthly
+  hourlyRateCents Int? // بالساعة (سنتيم)
+  dailyRateCents  Int? // باليوم/الوردية (سنتيم)
+  monthlyCents    Int? // أجر شهري أساسي (سنتيم)
+  transportZone   String    @default("urban") // urban | outside — سقف تعويض النقل المعفى (SPEC §11.6)
+  dependentsCount Int       @default(0) // الأعباء العائلية للـ IR — تُدخلها الإدارة بوثائق (SPEC §11.6)
+  hireDate        DateTime? // لعلاوة الأقدمية لاحقًا (تحتاج مراجعة محاسب — SPEC §11.6)
+  status          String    @default("active") // active | archived
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  user     User      @relation("EmployeeProfileUser", fields: [userId], references: [id])
+
+  @@unique([companyId, userId])
+  @@index([companyId, status])
+}
+
+/// فترة أجور شهرية لكل شركة (SPEC §4.3): دورة الاعتماد مسودة → مراجعة → معتمد (admin)
+/// بعد الاعتماد تُقفل الفترة وكشوفها — التصحيح بقيد جديد في فترة لاحقة فقط
+model PayPeriod {
+  id          String    @id @default(cuid())
+  companyId   String
+  year        Int
+  month       Int // 1..12
+  status      String    @default("draft") // draft | reviewing | approved
+  generatedAt DateTime?
+  submittedAt DateTime?
+  submittedBy String? // userId
+  approvedBy  String? // userId (admin — SPEC §4.3)
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  payslips Payslip[]
+
+  @@unique([companyId, year, month])
+  @@index([companyId, status])
+}
+
+/// كشف أجر عامل لفترة واحدة (SPEC §5: payslips): رقم مرجعي فريد + كل المبالغ بالسنتيم
+/// snapshotJson تُجمَّد عند الاعتماد (SPEC §4.4.1: المستند المعتمد لا يتغير)
+model Payslip {
+  id                   String    @id @default(cuid())
+  companyId            String
+  periodId             String
+  workerUserId         String
+  refNumber            String // PS-YYYYMM-NNNN — فريد داخل الشركة
+  workedMinutes        Int       @default(0) // صافي مدفوع الأساس (بدون دقائق الإضافي)
+  breakMinutes         Int       @default(0) // استراحات مخصومة من المجدول
+  overtimeMinutes      Int       @default(0) // مجموع دقائق الإضافي بكل النسب
+  workedDays           Int       @default(0) // أيام عمل فعلية (سقوف منح الوجبات اليومية)
+  grossCents           Int       @default(0) // الأجر الإجمالي (brut)
+  sbiCents             Int       @default(0) // الإجمالي الخاضع للـ IR (بعد المعفاة)
+  cnssBaseCents        Int       @default(0) // الأساس الخاضع للـ CNSS/AMO
+  cnssEmployeeCents    Int       @default(0) // حصة الأجير CNSS (قصير + طويل بسقف 6000)
+  amoEmployeeCents     Int       @default(0) // حصة الأجير AMO (بلا سقف)
+  proDeductionCents    Int       @default(0) // الحصة المهنية
+  rniCents             Int       @default(0) // الدخل الصافي الخاضع
+  irGrossCents         Int       @default(0) // IR قبل الأعباء العائلية
+  familyDeductionCents Int       @default(0) // خصم الأعباء العائلية (سقف 6 أشخاص)
+  irNetCents           Int       @default(0) // IR الصافي (لا ينزل عن صفر)
+  netCents             Int       @default(0) // الصافي للدفع
+  employerCostCents    Int       @default(0) // اشتراكات المشغّل (تكلفة فوق الإجمالي)
+  totalCostCents       Int       @default(0) // إجمالي تكلفة المشغّل (gross + اشتراكات)
+  smigBreached         Boolean   @default(false) // أقل من الحد الأدنى — يمنع الاعتماد (SPEC §11.2)
+  warningsJson         String? // JSON نصي: تحذيرات (تجاوز سقوف معفاة، قواعد غير موثقة...)
+  rulesJson            String? // مرجعية القواعد المستخدمة (key → value/source/effectiveFrom) — SPEC 6ب
+  dailyJson            String? // تفصيل أيام العمل (شفافية «كيف حُسب كل مبلغ» — SPEC §4.3)
+  snapshotJson         String? // نسخة ثابتة عند الاعتماد
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  company Company       @relation(fields: [companyId], references: [id])
+  period  PayPeriod     @relation(fields: [periodId], references: [id])
+  worker  User          @relation("PayslipWorker", fields: [workerUserId], references: [id])
+  lines   PayslipLine[]
+
+  @@unique([periodId, workerUserId])
+  @@unique([companyId, refNumber])
+  @@index([companyId, workerUserId])
+}
+
+/// بند كشف مفصّل (SPEC §5: payslip_lines): كل مبلغ بطبيعته وسببه — شفافية «كيف حُسب كل مبلغ» (SPEC §4.3)
+/// kinds: base_hours | absence_deduction | ot_day_normal | ot_night_normal | ot_day_rest | ot_night_rest
+///        | allowance_transport | allowance_meals | bonus | deduction
+///        | cnss_employee_short | cnss_employee_long | amo_employee | pro_deduction | ir_gross | family_deduction
+///        | employer_prest_short | employer_prest_long | employer_family | employer_amo | employer_tfp
+model PayslipLine {
+  id              String   @id @default(cuid())
+  payslipId       String
+  kind            String
+  minutes         Int? // للبنود الزمنية (أساس/إضافي)
+  rateBp          Int? // النسبة المطبقة أساس 10000 (بنود الإضافي/الاقتطاعات)
+  amountCents     Int // موجب = استحقاق، سالب = خصم/اقتطاع
+  exemptIrCents   Int       @default(0) // الجزء المعفى من IR ضمن البند (الباقي خاضع)
+  exemptCnssCents Int       @default(0) // الجزء المعفى من CNSS/AMO ضمن البند
+  order           Int       @default(0) // ترتيب العرض في القسيمة
+  label           String? // تسمية البنود اليدوية (المولَّة آليًا تُترجم من kind)
+  reason          String? // سبب البند اليدوي — «كل بند له سبب ومنشئ» (SPEC §4.3)
+  createdByUserId String? // منشئ البند اليدوي
+  createdAt       DateTime @default(now())
+
+  payslip Payslip @relation(fields: [payslipId], references: [id])
+
+  @@index([payslipId, order])
+}
+
+/// دفتر الحركات المالي (SPEC §4.3 و§5: ledger_entries): append-only لا يُعدَّل ولا يُحذف
+/// القيود تُكتب عند الاعتماد (وحركة كل بنود اليدوي) — التصحيح بقيد عكسي/جديد لا تعديل
+model LedgerEntry {
+  id              String   @id @default(cuid())
+  companyId       String
+  payslipId       String?
+  periodId        String?
+  workerUserId    String?
+  kind            String // payslip_approved | payslip_adjustment | payslip_reversal
+  amountCents     Int // صافي الحركة (موجب استحقاق، سالب عكس/تصحيح)
+  refNumber       String?
+  entryJson       String? // ملخص البنود وقت القيد (نسخة نصية)
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([payslipId])
 }

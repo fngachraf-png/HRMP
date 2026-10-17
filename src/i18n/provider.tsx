@@ -10,7 +10,7 @@ type I18nContextValue = {
   locale: Locale;
   dir: "rtl" | "ltr";
   dict: Dictionary;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -25,14 +25,19 @@ export function I18nProvider({
   children: React.ReactNode;
 }) {
   const t = useCallback(
-    (key: string): string => {
+    (key: string, params?: Record<string, string | number>): string => {
       const value = key.split(".").reduce<unknown>((acc, part) => {
         if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
           return (acc as Record<string, unknown>)[part];
         }
         return undefined;
       }, dict as unknown);
-      return typeof value === "string" ? value : key;
+      if (typeof value !== "string") return key;
+      if (!params) return value;
+      // استيفاء بسيط {name} — كافٍ لكل نصوص المنصة (أرقام لاتينية وأسماء)
+      return value.replace(/\{(\w+)\}/g, (match, name: string) =>
+        name in params ? String(params[name]) : match
+      );
     },
     [dict]
   );

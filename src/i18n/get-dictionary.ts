@@ -18,13 +18,17 @@ export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale] ?? dictionaries.ar;
 }
 
-/** الترجمة داخل الخادم بمفتاح شجرة نقاط: t(dict, "nav.login") */
-export function tServer(dict: Dictionary, key: string): string {
+/** الترجمة داخل الخادم بمفتاح شجرة نقاط: t(dict, "nav.login") — مع استيفاء {param} اختياري */
+export function tServer(dict: Dictionary, key: string, params?: Record<string, string | number>): string {
   const value = key.split(".").reduce<unknown>((acc, part) => {
     if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
       return (acc as Record<string, unknown>)[part];
     }
     return undefined;
   }, dict as unknown);
-  return typeof value === "string" ? value : key;
+  if (typeof value !== "string") return key;
+  if (!params) return value;
+  return value.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match
+  );
 }

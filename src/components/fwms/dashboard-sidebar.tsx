@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   UserCheck,
   ArrowLeftRight,
+  CalendarDays,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -53,8 +55,10 @@ const ALL_ITEMS: NavItem[] = [
   { key: "attendance", labelKey: "dashboard.attendance", icon: UserCheck, href: "/dashboard/attendance" },
   { key: "coverage", labelKey: "dashboard.coverage", icon: ArrowLeftRight, href: "/dashboard/coverage" },
   { key: "verificationPolicies", labelKey: "dashboard.verificationPolicies", icon: ShieldCheck, href: "/dashboard/verification-policies" },
+  { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, href: "/dashboard/payroll" },
+  { key: "holidays", labelKey: "dashboard.holidays", icon: CalendarDays, href: "/dashboard/holidays" },
+  { key: "myPayslips", labelKey: "dashboard.myPayslips", icon: ReceiptText, href: "/dashboard/my-payslips" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
-  { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, soon: true },
   { key: "reports", labelKey: "dashboard.reports", icon: FileText, soon: true },
   { key: "audit", labelKey: "dashboard.audit", icon: ScrollText, soon: true },
   { key: "settings", labelKey: "dashboard.settings", icon: Settings, soon: true },
@@ -64,14 +68,15 @@ export function DashboardSidebar({ role }: { role: string }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه وحضوره فقط
-  // المرحلة 4: «حضوري» للجميع (self.view) — «الحضور» لمن يملك attendance.manage — «السياسات» لمن يملك company.manage
+  // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه وحضوره وأجوره فقط
+  // المرحلة 6أ/6ب: «الأجور» لمن يملك payroll.view (مدير/محاسب/مالك) — «أجوري» للجميع (self.view)
+  // «العطل الرسمية» لمستخدمي الأجور (إدخالها admin) — co_admin بلا أرقام أجور (SPEC §4.4.1)
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
-    accountant: ["overview", "mySchedule", "myAttendance", "payroll", "reports", "audit"],
-    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "users", "payroll", "reports", "audit", "settings"],
-    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "reports"],
-    employee: ["overview", "mySchedule", "myAttendance", "reports"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
+    accountant: ["overview", "mySchedule", "myAttendance", "payroll", "holidays", "myPayslips", "reports", "audit"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
+    co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "myPayslips", "reports"],
+    employee: ["overview", "mySchedule", "myAttendance", "myPayslips", "reports"],
   };
   const keys = visibleKeys[role] ?? ["overview"];
   const items = ALL_ITEMS.filter((i) => keys.includes(i.key));
@@ -127,7 +132,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.5.0 — Phase 5</span>
+        <span dir="ltr">v0.6.0 — Phase 6</span>
       </div>
     </aside>
   );

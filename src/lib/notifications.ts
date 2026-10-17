@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 
 export const NOTIFICATION_TYPES = [
   "shift_replacement_assigned", // وردية تغطية أُسندت إليك
+  "payslip_approved", // كشف أجرك للفترة اعتُمد وجاهز في «أجوري» (المرحلة 6أ/6ب)
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -20,10 +21,15 @@ export type ReplacementPayload = {
   shiftId: string;
 };
 
+export type PayslipApprovedPayload = {
+  periodLabel: string; // "2026-10"
+  refNumber: string; // رقم الكشف المرجعي
+};
+
 export type NotificationRecord = {
   id: string;
   type: string;
-  payload: ReplacementPayload | null;
+  payload: ReplacementPayload | PayslipApprovedPayload | null;
   readAt: string | null;
   createdAt: string;
 };
@@ -33,7 +39,7 @@ export async function createNotification(input: {
   companyId: string;
   userId: string;
   type: NotificationType;
-  payload: ReplacementPayload;
+  payload: ReplacementPayload | PayslipApprovedPayload;
 }): Promise<string | null> {
   try {
     const record = await db.notification.create({
@@ -122,7 +128,7 @@ function vapidConfig(): { publicKey: string; privateKey: string; subject: string
 export async function dispatchWebPush(
   userId: string,
   type: string,
-  payload: ReplacementPayload,
+  payload: ReplacementPayload | PayslipApprovedPayload,
 ): Promise<{ sent: number; deactivated: number }> {
   const cfg = vapidConfig();
   const devices = await db.device.findMany({ where: { userId, isActive: true }, take: 20 });

@@ -13,7 +13,7 @@ type PayRuleSeed = {
   key: string;
   valueInt?: number;
   valueText?: string;
-  unit: "cents" | "basis_points" | "text" | "hours";
+  unit: "cents" | "basis_points" | "text" | "hours" | "count";
   effectiveFrom: string; // ISO date
   source: string;
 };
@@ -41,6 +41,10 @@ export const PAY_RULES: PayRuleSeed[] = [
   // ── مدة العمل (SPEC §11.3) ──────────────────────────────────────
   { key: "work.weekly_hours", valueInt: 44, unit: "hours", effectiveFrom: "2025-01-01", source: "مدونة الشغل 65-99 (SPEC §11.3)" },
   { key: "work.daily_max", valueInt: 10, unit: "hours", effectiveFrom: "2025-01-01", source: "مدونة الشغل (SPEC §11.3)" },
+  { key: "work.daily_hours", valueInt: 8, unit: "hours", effectiveFrom: "2025-01-01", source: "ساعات اليوم القياسية (استنباط 44 س/أسبوع — SPEC §11.3) — بانتظار تأكيد المحاسب" },
+
+  // ── سقف الأعباء العائلية (SPEC §11.6) ── [المرحلة 6أ/6ب]
+  { key: "ir.family_deduction_cap_people", valueInt: 6, unit: "count", effectiveFrom: "2026-01-01", source: "قانون المالية 2026 — سقف 6 أشخاص معالين (SPEC §11.6)" },
 
   // ── الساعات الإضافية — نسب أساس 10000 (SPEC §11.4، المادة 201) ──
   { key: "ot.day_normal", valueInt: 250000, unit: "basis_points", effectiveFrom: "2025-01-01", source: "المادة 201 (SPEC §11.4)" },
@@ -73,6 +77,15 @@ export const PAY_RULES: PayRuleSeed[] = [
   { key: "pro.rate_35_limit", valueInt: 650000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — 6 500 درهم/شهر (78 000/سنة)" },
   { key: "pro.cap_35", valueInt: 250000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — سقف 2 500 درهم/شهر (30 000/سنة)" },
   { key: "pro.rate_25_cap", valueInt: 291667, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — سقف 2 916,67 درهم/شهر (35 000/سنة)" },
+  // ── الحصة المهنية — النسب (أُضيفت بالمرحلة 6أ/6ب — ⚠️ بانتظار مراجعة المساعد الثاني كسابقة المرحلتين 2/3) ──
+  { key: "pro.rate_35", valueInt: 350000, unit: "basis_points", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — 35% للإجمالي ≤ 6 500 شهريًا" },
+  { key: "pro.rate_25", valueInt: 250000, unit: "basis_points", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — 25% فوق 6 500 شهريًا" },
+
+  // ── سقوف البنود المعفاة من IR/CNSS (SPEC §11.6 — أُضيفت بالمرحلة 6أ/6ب، بانتظار المراجعة) ──
+  { key: "exempt.transport.urban", valueInt: 50000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — تعويض النقل داخل المدار حتى 500 درهم/شهر" },
+  { key: "exempt.transport.outside", valueInt: 75000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — تعويض النقل خارج المدار حتى 750 درهم/شهر (بالتبرير)" },
+  { key: "exempt.meals.ir_daily", valueInt: 4000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — منح الوجبات حتى 40 درهم/يوم للـ IR" },
+  { key: "exempt.meals.cnss_daily", valueInt: 3000, unit: "cents", effectiveFrom: "2025-01-01", source: "SPEC §11.6 — CNSS مستحق على ما فوق 30 درهم/يوم" },
 ];
 
 /**

@@ -249,6 +249,176 @@ async function main() {
   console.log("✓ بنية تنظيمية: فرع الدار البيضاء + مشروع برج + 3 مواقع جغرافية + مجموعتا عمال");
   console.log("✓ جدولة: 4 قوالب ورديات قطاعية (حراسة ليل / بناء نهار / نظافة صباحي+مسائي)");
   console.log(`✓ سيناريو التغطية ${today}: عامل غائب بالبوابة + بديل متاح + عامل متعارض`);
+
+  // 10) المرحلة 6أ/6ب — بذور الأجور (⚠️ بانتظار مراجعة المساعد الثاني كسابقة المراحل السابقة):
+  //     أ) ملفات أجور العمال الثلاثة (أنظمة الاحتساب الثلاثة ممثلة: بالساعة/باليوم/شهري)
+  //     ب) العطل الرسمية ذات التاريخ الثابت 2026 (الدينية يُدخلها admin سنويًا — لا تُخمَّن)
+  //     ج) ورديات الأسبوع الفائت + حضور موثَّق كامل: سيناريو أجور قابل للعرض والتوليد
+  await db.employeeProfile.upsert({
+    where: { id: "profile-employee-1" },
+    update: {},
+    create: {
+      id: "profile-employee-1",
+      companyId: company.id,
+      userId: "user-employee",
+      payType: "hourly",
+      hourlyRateCents: 3000, // 30 درهم/ساعة
+      transportZone: "urban",
+      dependentsCount: 2,
+      hireDate: new Date("2024-06-01T00:00:00Z"),
+    },
+  });
+  await db.employeeProfile.upsert({
+    where: { id: "profile-employee-2" },
+    update: {},
+    create: {
+      id: "profile-employee-2",
+      companyId: company.id,
+      userId: "user-employee-2",
+      payType: "hourly",
+      hourlyRateCents: 2800, // 28 درهم/ساعة
+      transportZone: "urban",
+      dependentsCount: 0,
+      hireDate: new Date("2025-03-01T00:00:00Z"),
+    },
+  });
+  await db.employeeProfile.upsert({
+    where: { id: "profile-employee-3" },
+    update: {},
+    create: {
+      id: "profile-employee-3",
+      companyId: company.id,
+      userId: "user-employee-3",
+      payType: "daily",
+      dailyRateCents: 14400, // 144 درهم/يوم (≥ SMIG×8 = 143,36)
+      transportZone: "urban",
+      dependentsCount: 3,
+      hireDate: new Date("2023-01-15T00:00:00Z"),
+    },
+  });
+
+  const fixedHolidays2026 = [
+    { localDate: "2026-01-01", name: "رأس السنة الميلادية" },
+    { localDate: "2026-01-11", name: "ذكرى تقديم وثيقة الاستقلال" },
+    { localDate: "2026-01-14", name: "رأس السنة الأمازيغية" },
+    { localDate: "2026-05-01", name: "عيد الشغل" },
+    { localDate: "2026-07-30", name: "عيد العرش" },
+    { localDate: "2026-08-14", name: "استرجاع إقليم وادي الذهب" },
+    { localDate: "2026-08-20", name: "ثورة الملك والشعب" },
+    { localDate: "2026-08-21", name: "عيد الشباب" },
+    { localDate: "2026-11-06", name: "ذكرى المسيرة الخضراء" },
+    { localDate: "2026-11-18", name: "عيد الاستقلال" },
+  ];
+  for (const h of fixedHolidays2026) {
+    await db.holiday.upsert({
+      where: { companyId_localDate: { companyId: company.id, localDate: h.localDate } },
+      update: {},
+      create: { companyId: company.id, localDate: h.localDate, name: h.name },
+    });
+  }
+
+  // سيناريو ورديات الأسبوع الفائت (الإثنين–الجمعة) + حضور موثَّق كامل بتوقيت الشركة:
+  //   worker1: 3 ليالِ حراسة 22:00–06:00 (24 س ليلًا عاديًا — لا إضافي أسبوعي)
+  //   worker2: نظافة 06:00–14:00 الإثنين–الخميس (32 س عادية) + الجمعة (يوم الراحة — 8 س إضافي راحة نهار +50%)
+  //   worker3: بناء 08:00–17:00 الإثنين–الخميس بمرتبة أجر يومية (استراحة ساعة — 8 س صافية/يوم)
+  const lastMonday = (() => {
+    const [y, m, d] = today.split("-").map(Number);
+    const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    const back = (wd === 0 ? 6 : wd - 1) + 7; // إلى إثنين الأسبوع الفائت
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() - back);
+    return dt.toISOString().slice(0, 10);
+  })();
+  const shiftDate = (offset: number) => {
+    const [y, m, d] = lastMonday.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() + offset);
+    return dt.toISOString().slice(0, 10);
+  };
+
+  type PayShift = {
+    suffix: string;
+    workerId: string;
+    siteId: string;
+    templateId: string;
+    dayOffset: number;
+    startTimeMin: number;
+    endTimeMin: number;
+    breakMinutes: number;
+  };
+  const payShifts: PayShift[] = [];
+  for (let i = 0; i < 3; i++) {
+    payShifts.push({ suffix: `w1-night-${i}`, workerId: "user-employee", siteId: "site-demo-gate", templateId: "template-demo-security-night", dayOffset: i, startTimeMin: 1320, endTimeMin: 360, breakMinutes: 0 });
+  }
+  for (let i = 0; i < 5; i++) {
+    payShifts.push({ suffix: `w2-clean-${i}`, workerId: "user-employee-2", siteId: "site-demo-mall", templateId: "template-demo-cleaning-morning", dayOffset: i, startTimeMin: 360, endTimeMin: 840, breakMinutes: 30 });
+  }
+  for (let i = 0; i < 5; i++) {
+    payShifts.push({ suffix: `w3-build-${i}`, workerId: "user-employee-3", siteId: "site-demo-garden", templateId: "template-demo-construction-day", dayOffset: i, startTimeMin: 480, endTimeMin: 1020, breakMinutes: 60 });
+  }
+
+  for (const s of payShifts) {
+    const localDate = shiftDate(s.dayOffset);
+    const id = `shift-demo-pay-${localDate}-${s.suffix}`;
+    const startsAt = zonedToUtc(localDate, s.startTimeMin, company.timezone);
+    // وردية تعبر منتصف الليل (endTime ≤ startTime): النهاية في اليوم التالي (سابقة قوالب المرحلة 3)
+    const endsAt =
+      s.endTimeMin <= s.startTimeMin
+        ? new Date(zonedToUtc(localDate, s.endTimeMin, company.timezone).getTime() + 24 * 3600_000)
+        : zonedToUtc(localDate, s.endTimeMin, company.timezone);
+    const site = demoSites.find((x) => x.id === s.siteId)!;
+    await db.shift.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id,
+        companyId: company.id,
+        workerUserId: s.workerId,
+        siteId: s.siteId,
+        templateId: s.templateId,
+        localDate,
+        startsAt,
+        endsAt,
+        breakMinutes: s.breakMinutes,
+        status: "scheduled",
+        source: "manual",
+        notes: "بذور سيناريو الأجور (المرحلة 6أ/6ب)",
+        createdByUserId: "user-admin",
+      },
+    });
+    // حضور موثَّق كامل: زوج دخول/خروج عند بداية الوردية ونهايتها (داخل النطاق — مسافة 0)
+    for (const [type, occurredAt] of [
+      ["check_in", startsAt],
+      ["check_out", endsAt],
+    ] as const) {
+      const exists = await db.attendanceEvent.findFirst({
+        where: { companyId: company.id, workerUserId: s.workerId, siteId: s.siteId, type, occurredAt },
+      });
+      if (!exists) {
+        await db.attendanceEvent.create({
+          data: {
+            companyId: company.id,
+            workerUserId: s.workerId,
+            siteId: s.siteId,
+            shiftId: id,
+            type,
+            occurredAt,
+            latitude: site.latitude,
+            longitude: site.longitude,
+            accuracyM: 8,
+            distanceM: 0,
+            insideFence: true,
+            policy: "none",
+            verification: "none",
+            status: "verified",
+            networkMode: "internet",
+          },
+        });
+      }
+    }
+  }
+
+  console.log("✓ المرحلة 6أ/6ب: ملفات أجور 3 عمال (ساعي/ساعي/يومي) + عطل 2026 الثابتة + ورديات وحضور الأسبوع الفائت");
   console.log(`  كلمة المرور التجريبية للكل: ${DEMO_PASSWORD}`);
   console.log("  owner@fwms.local | admin@demo.ma | accountant@demo.ma | supervisor@demo.ma | worker@demo.ma | worker2@demo.ma | worker3@demo.ma");
 }

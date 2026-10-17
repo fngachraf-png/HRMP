@@ -22,10 +22,15 @@ type ReplacementPayload = {
   shiftId: string;
 };
 
+type PayslipApprovedPayload = {
+  periodLabel: string;
+  refNumber: string;
+};
+
 type NotificationRow = {
   id: string;
   type: string;
-  payload: ReplacementPayload | null;
+  payload: ReplacementPayload | PayslipApprovedPayload | null;
   readAt: string | null;
   createdAt: string;
 };
@@ -141,11 +146,15 @@ export function NotificationBell() {
 
   function renderBody(n: NotificationRow): string {
     if (n.type === "shift_replacement_assigned" && n.payload) {
-      const p = n.payload;
+      const p = n.payload as ReplacementPayload;
       const line = `${t("notifications.replaceLine1")} «${p.siteName}» ${t("notifications.replaceLine2")} ${p.localDate} ${t("notifications.replaceFrom")} ${p.startLabel} ${t("notifications.replaceTo")} ${p.endLabel}`;
       return p.previousWorkerName
         ? `${line} — ${t("notifications.replaceInsteadOf")} ${p.previousWorkerName}`
         : line;
+    }
+    if (n.type === "payslip_approved" && n.payload) {
+      const p = n.payload as PayslipApprovedPayload;
+      return `${t("notifications.payslipLine1")} ${p.periodLabel} — ${t("notifications.payslipLine2")} ${p.refNumber}`;
     }
     return t("notifications.unknownType");
   }

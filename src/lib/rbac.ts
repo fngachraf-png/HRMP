@@ -16,6 +16,7 @@ export const PERMISSIONS = [
   "users.manage", // إدارة مستخدمي الشركة
   "payroll.view", // عرض كشوف الأجور
   "payroll.approve", // اعتماد كشوف الأجور النهائية
+  "payroll.verify", // توثيق قواعد الأجور (المحاسب — المرحلة 6أ/6ب: يمنع الاعتماد قبلها)
   "declarations.review", // مراجعة/اعتماد ملفات التصريح (CNSS/DGI)
   "declarations.export", // تصدير الملفات الرسمية
   "audit.view", // عرض سجل التدقيق
@@ -30,6 +31,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [...PERMISSIONS],
   accountant: [
     "payroll.view",
+    "payroll.verify",
     "declarations.review",
     "declarations.export",
     "audit.view",
