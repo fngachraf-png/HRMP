@@ -7,6 +7,7 @@
 
 ### Added
 - **قاعدة بيانات الهاتف:** `prisma migrate deploy` للمرحلتين 4+5 معًا — migration `20261016222210_phase4_5_attendance_notifications` (جداول `AttendanceEvent`/`Notification`/`Device` + 11 فهرساً) — `db/fwms.db` = 20 جدولاً، integrity_check=ok وforeign_key_check=0، ومولد `prisma migrate diff` موثّق في DATABASE_GUIDE §9.1 (المساعد الثاني).
+- **قاعدة بيانات الهاتف:** **المرحلة 6 كاملة (6أ/6ب + 6ج)** — اعتماد ودفع `20261017013934_phase6_payroll` (6 جداول، أنشأها وطبّقها عمل سابق منقطع دون دفع) + migration جديدة `20261017140824_phase6c_declarations` مولّدة بـ `prisma migrate diff` (§9.1) بـ 8 جداول (`PayRegime`/`RegimeContributionItem`/`RegimeCalcStep`/`RegimeAssignment`/`DeclarationSpec`/`Declaration`/`DeclarationFile`/`DeclarationReceipt`) + عمودا `cin`/`cnssNumber` + 13 فهرساً — `db/fwms.db` = **33 جدولاً**، integrity_check=ok، foreign_key_check=0، صفر migrations عالقة، ونسخة احتياطية إلزامية قبل التطبيق (`fwms-2026-10-17-1407-daily.db`) (المساعد الثاني).
 - **بيئة الهاتف:** مراجعة + تنفيذ بذور المرحلة5 (عاملان + سيناريو التغطية اليومي — idempotency مثبت بتشغيل مزدوج) + بناء وتشغيل v0.5.0 على الخادم المحلي + اختبار دخان API شامل **22/22** للمرحلتين4+5 من الهاتف نفسه (المساعد الثاني).
 
 ### Planned (المخطط القادم)
