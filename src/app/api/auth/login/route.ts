@@ -1,15 +1,21 @@
-// FWMS — تسجيل الدخول (SPEC §6): تحقق خادمي، تسجيل في التدقيق، ثم جلسة بشركة نشطة
+// FWMS — تسجيل الدخول (SPEC §6): تحقق خادمي، تحديد معدل، تسجيل في التدقيق، ثم جلسة بشركة نشطة
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import { issueSession, requestMeta, setSessionCookie } from "@/lib/auth/session";
 import { writeAudit } from "@/lib/audit";
+import { rateLimit } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email().max(190),
   password: z.string().min(1).max(200),
 });
+
+// تحديد معدل تسجيل الدخول (SPEC §6 إلزامي — المرحلة 8 أغلقته): 10 محاولات/دقيقة
+// لكل (بريد + IP) — يحمي من تخمين كلمات المرور عبر المنفذ العام للنفق
+const LOGIN_RATE_LIMIT = 10;
+const LOGIN_RATE_WINDOW_MS = 60_000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +23,20 @@ export async function POST(req: NextRequest) {
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+    }
+
+    // تحديد المعدل قبل أي استعلام (بالمفتاح المركّب بريد+IP كي لا يُخنَق مستخدم
+    // شرعي خلف NAT واحد بسبب مجرم واحد) — رسالة الخطأ نفسها للخارج
+    const meta0 = await requestMeta();
+    const rl = rateLimit(
+      `login:${parsed.data.email.toLowerCase()}:${meta0.ip ?? "unknown"}`,
+      LOGIN_RATE_LIMIT,
+      LOGIN_RATE_WINDOW_MS
+    );
+    if (!rl.allowed) {
+      const res = NextResponse.json({ error: "rate_limited", retryAfterMs: rl.retryAfterMs }, { status: 429 });
+      res.headers.set("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));
+      return res;
     }
 
     const user = await db.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });

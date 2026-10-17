@@ -5,7 +5,7 @@ import React from "react";
 import type { Document, Page, Text, View, StyleSheet, renderToBuffer, Image } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/stylesheet";
 import { loadPdfLib } from "./load-react-pdf";
-import type { AnyReportData, PayslipReportData, ReportLanguage, ReportOptions } from "./types";
+import type { AnyReportData, PayslipReportData, ReportBranding, ReportLanguage, ReportOptions } from "./types";
 import { ensurePdfFonts, docFontFamily } from "./fonts";
 import { reportDict, tr, docMoney, docHours, monthLabel, isRtl } from "./i18n";
 import type { ReportDict } from "./i18n";
@@ -30,6 +30,7 @@ type Ctx = {
   font: string;
   options: ReportOptions;
   meta: PdfRenderMeta;
+  branding: ReportBranding; // هوية مالك المنصة (white-label — SPEC §3.2)
 };
 
 function P(): ReturnType<typeof loadPdfLib> {
@@ -229,6 +230,14 @@ function headerEl(
 function footerEl(ctx: Ctx): React.ReactElement {
   const s = stylesCache!;
   const L = (k: string) => tr(ctx.dict, k);
+  // تذييل التقرير = إعداد تخصيص المالك (white-label — SPEC §3.2):
+  // footerText المخصص أو الاسم القانوني للمالك — بمقاطع الأبجديات (درس المرحلة 7)
+  const brand = ctx.branding.footerText ?? ctx.branding.legalName;
+  const label = L("reports.doc.footerOfficial");
+  const brandContent = (() => {
+    const rich = richChildren(ctx, `${label} — ${brand}`, "NotoSans");
+    return rich.length > 0 ? rich : `${label} — ${brand}`;
+  })();
   return React.createElement(
     P().View,
     { style: s.footer, fixed: true },
@@ -240,7 +249,7 @@ function footerEl(ctx: Ctx): React.ReactElement {
           `${L("reports.doc.page")} ${pageNumber} ${L("reports.doc.of")} ${totalPages}`,
       }
     ),
-    React.createElement(P().Text, { style: { fontFamily: "NotoSans" } }, L("reports.doc.footerOfficial"))
+    React.createElement(P().Text, { style: { fontFamily: "NotoSans" } }, brandContent)
   );
 }
 
@@ -703,7 +712,7 @@ function platformSummaryPage(ctx: Ctx, data: Extract<AnyReportData, { kind: "pla
   const children: (React.ReactElement | null)[] = [
     headerEl(
       ctx,
-      { legalName: "FWMS", tradeName: null, taxId: null, cnssNumber: null },
+      { legalName: data.branding.legalName, tradeName: data.branding.displayName, taxId: null, cnssNumber: null },
       L("reports.doc.platformTitle"),
       `${L("reports.doc.companiesCount")}: ${data.companiesCount}`
     ),
@@ -749,6 +758,7 @@ export async function renderReportPdf(
     font: docFontFamily(language),
     options,
     meta,
+    branding: data.branding,
   };
   stylesCache = makeStyles(ctx);
   try {

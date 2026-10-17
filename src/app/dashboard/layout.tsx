@@ -6,6 +6,25 @@ import { CompanySwitcher } from "@/components/fwms/company-switcher";
 import { LogoutButton } from "@/components/fwms/logout-button";
 import { LangSwitcher } from "@/components/fwms/lang-switcher";
 import { NotificationBell } from "@/components/fwms/notification-bell";
+import { getPlatformBranding, parseModules, isModuleEnabled, MODULE_KEYS } from "@/lib/branding";
+
+/** مفاتيح عناصر الشريط الجانبي التي تحكمها وحدة مالك المنصة (white-label — SPEC §3.2) */
+const NAV_MODULE_OF: Record<string, string> = {
+  shiftTemplates: "module.scheduling",
+  shifts: "module.scheduling",
+  recurrences: "module.scheduling",
+  mySchedule: "module.scheduling",
+  attendance: "module.attendance",
+  myAttendance: "module.attendance",
+  coverage: "module.coverage",
+  payroll: "module.payroll",
+  payrollWorkers: "module.payroll",
+  regimes: "module.payroll",
+  declarations: "module.declarations",
+  declarationSpecs: "module.declarations",
+  reports: "module.reports",
+  myPayslips: "module.reports",
+};
 
 export default async function DashboardLayout({
   children,
@@ -22,9 +41,15 @@ export default async function DashboardLayout({
   });
   const companies = memberships.map((m) => ({ id: m.company.id, legalName: m.company.legalName }));
 
+  // هوية المالك + تفعيل الوحدات (white-label — SPEC §3.2): تُمرَّر للشريط الجانبي
+  const branding = await getPlatformBranding();
+  const modules = parseModules(branding.modulesJson);
+  const hiddenKeys = MODULE_KEYS.filter((k) => !isModuleEnabled(modules, k))
+    .flatMap((k) => Object.entries(NAV_MODULE_OF).filter(([, mod]) => mod === k).map(([nav]) => nav));
+
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
-      <DashboardSidebar role={session.role} />
+      <DashboardSidebar role={session.role} brandName={branding.displayName} hiddenKeys={hiddenKeys} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-3 backdrop-blur-md sm:px-5">

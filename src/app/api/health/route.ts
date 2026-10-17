@@ -1,6 +1,7 @@
 // FWMS — فحص الصحة (SPEC §7): يُفحص بعد كل نشر (docs/DEPLOYMENT.md §5)
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { APP_VERSION } from "@/lib/version";
 
 export async function GET() {
   const startedAt = Date.now();
@@ -16,7 +17,7 @@ export async function GET() {
     {
       status: healthy ? "ok" : "degraded",
       service: "fwms",
-      version: "0.8.0",
+      version: APP_VERSION,
       database,
       timestamp: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,

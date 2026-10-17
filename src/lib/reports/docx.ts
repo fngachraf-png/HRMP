@@ -19,7 +19,7 @@ import {
   TextRun,
   WidthType,
 } from "docx";
-import type { AnyReportData, ReportLanguage, ReportOptions } from "./types";
+import type { AnyReportData, ReportBranding, ReportLanguage, ReportOptions } from "./types";
 import { readFont, FONT_FILES } from "./fonts";
 import { reportDict, tr, docMoney, docHours, monthLabel, isRtl } from "./i18n";
 import type { ReportDict } from "./i18n";
@@ -40,6 +40,7 @@ type Ctx = {
   rtl: boolean;
   options: ReportOptions;
   meta: DocxRenderMeta;
+  branding: ReportBranding; // هوية مالك المنصة (white-label — SPEC §3.2)
 };
 
 const INK = "1A2433";
@@ -49,8 +50,13 @@ const BRAND = "1E3A5F";
 
 // ─── أدوات ────────────────────────────────────────────────────
 
-function makeCtx(lang: ReportLanguage, options: ReportOptions, meta: DocxRenderMeta): Ctx {
-  return { lang, dict: reportDict(lang), rtl: isRtl(lang), options, meta };
+function makeCtx(
+  language: ReportLanguage,
+  options: ReportOptions,
+  meta: DocxRenderMeta,
+  branding: ReportBranding
+): Ctx {
+  return { lang: language, dict: reportDict(language), rtl: isRtl(language), options, meta, branding };
 }
 
 /** فقرة نصية بالاتجاه الصحيح — الأرقام والعزوف اللاتيني run منفصل LTR */
@@ -210,6 +216,9 @@ function headerBlock(
 
 function pageFooter(ctx: Ctx): Footer {
   const L = (k: string) => tr(ctx.dict, k);
+  // تذييل مخصص للمالك (white-label — SPEC §3.2): footerText أو الاسم القانوني
+  const brand = ctx.branding.footerText ?? ctx.branding.legalName;
+  const brandArabic = /[\u0600-\u06FF]/.test(brand);
   return new Footer({
     children: [
       new Paragraph({
@@ -221,6 +230,14 @@ function pageFooter(ctx: Ctx): Footer {
           new TextRun({ children: [PageNumber.CURRENT], size: 15, color: MUTED, font: "Noto Sans" }),
           new TextRun({ text: ` ${L("reports.doc.of")} `, size: 15, color: MUTED, rightToLeft: ctx.rtl, font: ctx.rtl ? "Noto Naskh Arabic" : "Noto Sans" }),
           new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 15, color: MUTED, font: "Noto Sans" }),
+          new TextRun({ text: `  •  ${L("reports.doc.footerOfficial")} — `, size: 15, color: MUTED, rightToLeft: ctx.rtl, font: ctx.rtl ? "Noto Naskh Arabic" : "Noto Sans" }),
+          new TextRun({
+            text: brand,
+            size: 15,
+            color: MUTED,
+            rightToLeft: ctx.rtl && brandArabic,
+            font: brandArabic ? "Noto Naskh Arabic" : "Noto Sans",
+          }),
         ],
       }),
     ],
@@ -496,7 +513,7 @@ function platformSummaryChildren(ctx: Ctx, data: Extract<AnyReportData, { kind: 
   return [
     ...headerBlock(
       ctx,
-      { legalName: "FWMS", tradeName: null, taxId: null, cnssNumber: null },
+      { legalName: data.branding.legalName, tradeName: data.branding.displayName, taxId: null, cnssNumber: null },
       L("reports.doc.platformTitle"),
       `${L("reports.doc.companiesCount")}: ${data.companiesCount}`
     ),
@@ -532,7 +549,7 @@ export async function renderReportDocx(
   options: ReportOptions,
   meta: DocxRenderMeta
 ): Promise<Uint8Array> {
-  const ctx = makeCtx(language, options, meta);
+  const ctx = makeCtx(language, options, meta, data.branding);
   const [naskh, sans, qrPng] = await Promise.all([
     readFont(FONT_FILES.naskhRegular),
     readFont(FONT_FILES.sansRegular),

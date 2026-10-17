@@ -63,6 +63,7 @@ const ALL_ITEMS: NavItem[] = [
   { key: "declarationSpecs", labelKey: "dashboard.declarationSpecs", icon: FileCog, href: "/dashboard/declaration-specs" },
   { key: "declarations", labelKey: "dashboard.declarations", icon: Landmark, href: "/dashboard/declarations" },
   { key: "holidays", labelKey: "dashboard.holidays", icon: CalendarDays, href: "/dashboard/holidays" },
+  { key: "platform", labelKey: "dashboard.platform", icon: Landmark, href: "/dashboard/platform" },
   { key: "myPayslips", labelKey: "dashboard.myPayslips", icon: ReceiptText, href: "/dashboard/my-payslips" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
   { key: "reports", labelKey: "dashboard.reports", icon: FileText, href: "/dashboard/reports" },
@@ -70,7 +71,15 @@ const ALL_ITEMS: NavItem[] = [
   { key: "settings", labelKey: "dashboard.settings", icon: Settings, soon: true },
 ];
 
-export function DashboardSidebar({ role }: { role: string }) {
+export function DashboardSidebar({
+  role,
+  brandName,
+  hiddenKeys = [],
+}: {
+  role: string;
+  brandName?: string; // اسم مالك المنصة (white-label — SPEC §3.2) — من الخادم
+  hiddenKeys?: string[]; // عناصر وحدات عطّلها المالك (تفعيل/تعطيل الوحدات — SPEC §3.2)
+}) {
   const { t } = useI18n();
   const pathname = usePathname();
 
@@ -79,14 +88,14 @@ export function DashboardSidebar({ role }: { role: string }) {
   // «العطل الرسمية» لمستخدمي الأجور (إدخالها admin) — co_admin بلا أرقام أجور (SPEC §4.4.1)
   // المرحلة 6ج (SPEC §12 و§4.6): المسارات لمستخدمي الأجور — المواصفات والتصاريح للمحاسب/المالك حصرًا
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "regimes", "declarationSpecs", "declarations", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "regimes", "declarationSpecs", "declarations", "holidays", "platform", "myPayslips", "users", "reports", "audit", "settings"],
     accountant: ["overview", "mySchedule", "myAttendance", "payroll", "regimes", "declarationSpecs", "declarations", "holidays", "myPayslips", "reports", "audit"],
     admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "regimes", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
     co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "myPayslips", "reports"],
     employee: ["overview", "mySchedule", "myAttendance", "myPayslips", "reports"],
   };
   const keys = visibleKeys[role] ?? ["overview"];
-  const items = ALL_ITEMS.filter((i) => keys.includes(i.key));
+  const items = ALL_ITEMS.filter((i) => keys.includes(i.key) && !hiddenKeys.includes(i.key));
 
   return (
     <aside className="flex w-full shrink-0 flex-col bg-sidebar text-sidebar-foreground md:w-64">
@@ -94,7 +103,7 @@ export function DashboardSidebar({ role }: { role: string }) {
       <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
         <FwmsLogo className="size-8" />
         <div className="flex flex-col leading-tight">
-          <span className="text-base font-extrabold tracking-tight">FWMS</span>
+          <span className="text-base font-extrabold tracking-tight">{brandName ?? "FWMS"}</span>
           <span className="text-[11px] text-sidebar-foreground/70">{t("dashboard.title")}</span>
         </div>
       </div>

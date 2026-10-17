@@ -61,7 +61,6 @@ server.log
 /.zscripts/
 /Caddyfile
 /examples/
-/tests/
 /bun-x/
 
 # scaffold artifacts (not part of FWMS)

@@ -2,7 +2,7 @@
 // المسار: SVG (نص direction:rtl مع text-anchor=start للحواف اليمنى) → sharp → PNG
 // الخطوط من مجلد المشروع عبر FONTCONFIG_FILE (بلا خطوط نظام) — تشكيل العربية مثبت بصريًا
 // يدعم الأنواع القصيرة فقط: payslip | platform_summary (البقية pdf/docx حصرًا)
-import type { AnyReportData, ReportLanguage, ReportOptions } from "./types";
+import type { AnyReportData, ReportBranding, ReportLanguage, ReportOptions } from "./types";
 import { ensureFontconfig } from "./fonts";
 import { reportDict, tr, docMoney, docHours, monthLabel } from "./i18n";
 import type { ReportDict } from "./i18n";
@@ -23,8 +23,19 @@ type Ctx = {
   rtl: boolean;
   options: ReportOptions;
   meta: PngRenderMeta;
+  branding: ReportBranding; // هوية مالك المنصة (white-label — SPEC §3.2)
 };
 
+/** تذييل الهوية — سطران مستققلان لتفادي مزج الأبجديات في عنصر واحد (درس المرحلة 7):
+ * سطر اسم المالك (بخط أبجديّته) فوق سطر المرجع */
+function brandFooter(ctx: Ctx, bottomY: number, refLine: string): string {
+  const name = ctx.branding.displayName;
+  const arabic = /[\u0600-\u06FF]/.test(name);
+  return (
+    `<text x="${W / 2}" y="${bottomY - 13}" text-anchor="middle" ${arabic ? 'direction="rtl" font-family="Noto Naskh Arabic"' : 'direction="ltr" font-family="Noto Sans"'} font-size="9" fill="${MUTED}">${esc(name)}</text>\n` +
+    `<text x="${W / 2}" y="${bottomY}" text-anchor="middle" direction="ltr" font-family="Noto Sans" font-size="9" fill="${MUTED}">${esc(refLine)}</text>`
+  );
+}
 const W = 860; // عرض أساس — density 144 يعطي دقة مشاركة جيدة بالهاتف
 const BRAND = "#1e3a5f";
 const INK = "#1a2433";
@@ -146,7 +157,7 @@ function payslipSvg(ctx: Ctx, data: Extract<AnyReportData, { kind: "payslip" }>,
   body.push(`<text x="${colAmountX}" y="${cursor + 33}" text-anchor="${ctx.rtl ? "start" : "end"}" direction="ltr" font-family="Noto Sans" font-size="20" font-weight="700" fill="#ffffff">${esc(money(data.totals.netCents))}</text>`);
   cursor += 78;
 
-  const height = Math.max(cursor + 150, 640);
+  const height = Math.max(cursor + 170, 660);
 
   // QR + المرجع
   const qrX = ctx.rtl ? LEFT + 6 : W - LEFT - 96;
@@ -156,7 +167,7 @@ function payslipSvg(ctx: Ctx, data: Extract<AnyReportData, { kind: "payslip" }>,
   body.push(`<text x="${refX}" y="${height - 92}" text-anchor="${refAnchor}" direction="ltr" font-family="Noto Sans" font-size="12" fill="${INK}">${esc(data.refNumber)}</text>`);
   body.push(`<text x="${refX}" y="${height - 72}" text-anchor="${refAnchor}" direction="ltr" font-family="Noto Sans" font-size="10" fill="${MUTED}">${esc(ctx.meta.contentHash.slice(0, 24))}</text>`);
   body.push(`<text x="${refX}" y="${height - 54}" text-anchor="${refAnchor}" ${ctxDirection()} font-family="Noto Naskh Arabic" font-size="10" fill="${MUTED}">${esc(L("reports.doc.qrCaption"))}</text>`);
-  body.push(`<text x="${W / 2}" y="${height - 20}" text-anchor="middle" direction="ltr" font-family="Noto Sans" font-size="9" fill="${MUTED}">FWMS — ${esc(ctx.meta.refNumber)}</text>`);
+  body.push(brandFooter(ctx, height - 20, ctx.meta.refNumber));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" viewBox="0 0 ${W} ${height}">
   <rect width="${W}" height="${height}" fill="#ffffff"/>
@@ -195,10 +206,10 @@ function platformSvg(ctx: Ctx, data: Extract<AnyReportData, { kind: "platform_su
     cursor += rowH;
   }
 
-  const height = Math.max(cursor + 60, 420);
+  const height = Math.max(cursor + 90, 460);
   const qrX = ctx.rtl ? LEFT + 6 : W - LEFT - 80;
-  body.push(`<image href="data:image/png;base64,${qrB64}" x="${qrX}" y="${height - 100}" width="80" height="80"/>`);
-  body.push(`<text x="${W / 2}" y="${height - 20}" text-anchor="middle" direction="ltr" font-family="Noto Sans" font-size="9" fill="${MUTED}">FWMS — ${esc(ctx.meta.refNumber)}</text>`);
+  body.push(`<image href="data:image/png;base64,${qrB64}" x="${qrX}" y="${height - 120}" width="80" height="80"/>`);
+  body.push(brandFooter(ctx, height - 20, ctx.meta.refNumber));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${height}" viewBox="0 0 ${W} ${height}">
   <rect width="${W}" height="${height}" fill="#ffffff"/>
@@ -222,7 +233,7 @@ export async function renderReportPng(
   const { default: sharp } = await import("sharp");
 
   currentRtl = language === "ar";
-  const ctx: Ctx = { lang: language, dict: reportDict(language), rtl: currentRtl, options, meta };
+  const ctx: Ctx = { lang: language, dict: reportDict(language), rtl: currentRtl, options, meta, branding: data.branding };
   const qrBuf = await qrPngBuffer(meta.verifyUrl, 240);
   const qrB64 = qrBuf.toString("base64");
 

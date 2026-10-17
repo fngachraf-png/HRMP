@@ -26,6 +26,13 @@ model PlatformOwner {
   logoUrl         String?
   defaultLocale   String   @default("ar")
   defaultCurrency String   @default("MAD")
+  // ── المرحلة 8 (SPEC §3.2: التخصيص white-label + نقل الملكية) — ملكية التغيير: المساعد الأول
+  // ⚠️ بانتظار migration موقّعة (مع المعلقة للمرحلة 7) — راجع docs/WORKLOG.md
+  websiteUrl      String?  // موقع المالك (تخصيص الهوية)
+  termsUrl        String?  // شروط الاستخدام (إعداد تخصيص — SPEC §3.2)
+  footerText      String?  // تذييل التقارير والوثائق (إعداد تخصيص — SPEC §3.2)
+  modulesJson     String?  // تفعيل/تعطيل الوحدات والمسارات بحسب المالك (JSON) — null = الكل مفعّل
+  transferFreeze  Boolean  @default(false) // تجميد مؤقت للتغييرات الإدارية أثناء نقل الملكية (SPEC §3.2 خطوة 1)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -897,4 +904,59 @@ model GeneratedDocument {
   @@index([companyId, createdAt])
   @@index([targetId])
   @@index([subjectUserId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// نقل ملكية المنصة (SPEC §3.2 — المرحلة 8) — ملكية التغيير: المساعد الأول
+// ⚠️ بانتظار migration موقّعة (مع المعلقة للمرحلة 7) — راجع docs/WORKLOG.md
+// ─────────────────────────────────────────────────────────────
+
+/// عملية نقل ملكية واحدة (SPEC §3.2): موافقتان منفصلتان (حالي/جديد) + تجميد إداري مؤقت
+/// + نسخة احتياطية وتصدير بصيغة مفتوحة وفحص تطابق + تنفيذ (تبديل كيان المالك + إبطال
+/// كل الجلسات + إلغاء عضويات super_admin السابقة) — كل خطوة تُسجَّل في سجل التدقيق.
+/// states: awaiting_current_owner | awaiting_new_owner | approved | completed | cancelled
+model OwnershipTransfer {
+  id                        String    @id @default(cuid())
+  state                     String    @default("awaiting_current_owner")
+  reason                    String? // سبب النقل (موثَّق في التدقيق)
+  // المالك الجديد (بيانات كيان platform_owner البديل — SPEC §3.2)
+  newOwnerLegalName         String
+  newOwnerDisplayName       String
+  newOwnerContactEmail      String?
+  newOwnerContactPhone      String?
+  newOwnerInitialAdminEmail String // حساب super_admin الابتدائي للمالك الجديد (يُنشأ عند التنفيذ)
+  // هوية المالك السابق كاملة قبل النقل (JSON نصي — للتدقيق، لا يُفقد شيء)
+  oldOwnerJson              String?
+  // الموافقتان المنفصلتان (SPEC §3.2 خطوة 1) — كل موافقة تُعيد المصادقة بكلمة المرور
+  initiatedByUserId         String
+  currentOwnerApprovedAt    DateTime?
+  currentOwnerApprovedBy    String?
+  newOwnerApprovedAt        DateTime?
+  newOwnerApprovedByUserId  String? // المشغّل الذي أدخل رمز موافقة المالك الجديد
+  approvalCodeHash          String? // SHA-256 لرمز موافقة المالك الجديد (يُسلَّم خارج النظام)
+  // النسخ الاحتياطي والتصدير المفتوح وفحص التطابق (SPEC §3.2 خطوة 2)
+  backupPath                String?
+  backupSha256              String?
+  backupTableCount          Int?
+  exportPath                String?
+  exportSha256              String?
+  integrityCheckStatus      String? // ok | failed
+  integrityCheckDetail      String?
+  // التنفيذ (SPEC §3.2 خطوة 3)
+  executedAt                DateTime?
+  executedByUserId          String?
+  newAdminUserId            String? // المستخدم الابتدائي للمالك الجديد
+  revokedSuperAdminCount    Int? // عضويات super_admin السابقة المُلغاة
+  sessionsInvalidatedUsers  Int? // عدد المستخدمين الذين أُبطلت جلساتهم (الكل — تدوير أمان)
+  secretsRotatedAt          DateTime? // تأكيد المشغّل: أسرار .env والبنية دُوِّرت (دليل الأداة)
+  secretsRotatedByUserId    String?
+  // الإلغاء (قبل التنفيذ فقط)
+  cancelledAt               DateTime?
+  cancelledByUserId         String?
+  cancelReason              String?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([state])
+  @@index([createdAt])
 }

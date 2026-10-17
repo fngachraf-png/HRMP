@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { requirePermission, AccessError } from "@/lib/rbac";
 import { writeAudit } from "@/lib/audit";
+import { isPlatformFrozen } from "@/lib/branding";
 import { companyUpdateSchema, emptyToNull, entityIdSchema } from "@/lib/organization";
 
 export async function PATCH(
@@ -14,6 +15,11 @@ export async function PATCH(
   try {
     const session = await getSession();
     requirePermission(session, "platform.manage");
+
+    // تجميد التغييرات الإدارية أثناء نقل ملكية جارٍ (SPEC §3.2 خطوة 1)
+    if (await isPlatformFrozen()) {
+      return NextResponse.json({ error: "platform_frozen" }, { status: 423 });
+    }
 
     const { id } = await params;
     if (!entityIdSchema.safeParse(id).success) {

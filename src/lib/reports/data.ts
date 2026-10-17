@@ -2,6 +2,7 @@
 // القاعدة الذهبية: القسيمة والملخصات تُبنى من snapshotJson المجمدة للكشوف المعتمدة —
 // «التصدير يخضع للعملة والقواعد المعتمدة في وقت الفترة لا الحالية» (SPEC §4.4.1)
 import { db } from "@/lib/db";
+import { getPlatformBranding } from "@/lib/branding";
 import type {
   AttendanceReportData,
   AttendanceRow,
@@ -10,6 +11,7 @@ import type {
   PayrollSummaryReportData,
   PayslipReportData,
   PlatformSummaryReportData,
+  ReportBranding,
   ReportCompany,
   ReportLine,
   ReportWorker,
@@ -43,6 +45,21 @@ function reportCompany(c: CompanyRow): ReportCompany {
     taxId: c.taxId,
     cnssNumber: c.cnssNumber,
     currency: c.currency || "MAD",
+  };
+}
+
+/** هوية مالك المنصة لكل مستند (white-label — SPEC §3.2): تدخل بيانات المستند
+ * فتدخل بصمة المحتوى — تغيّر الهوية = إصدار جديد، والقديم ثابت للتدقيق */
+async function reportBranding(): Promise<ReportBranding> {
+  const b = await getPlatformBranding();
+  return {
+    legalName: b.legalName,
+    displayName: b.displayName,
+    contactEmail: b.contactEmail,
+    contactPhone: b.contactPhone,
+    websiteUrl: b.websiteUrl,
+    footerText: b.footerText,
+    termsUrl: b.termsUrl,
   };
 }
 
@@ -125,6 +142,7 @@ export async function buildPayslipReportData(
 
   return {
     kind: "payslip",
+    branding: await reportBranding(),
     payslipId: payslip.id,
     refNumber: payslip.refNumber,
     periodLabel: periodKeyOf(payslip.period.year, payslip.period.month),
@@ -212,6 +230,7 @@ export async function buildPayrollSummaryData(
 
   return {
     kind: "payroll_summary",
+    branding: await reportBranding(),
     periodId: period.id,
     periodLabel: periodKeyOf(period.year, period.month),
     periodStatus: period.status,
@@ -296,6 +315,7 @@ export async function buildAttendanceReportData(
 
   return {
     kind,
+    branding: await reportBranding(),
     targetUserId,
     workerName: worker.fullName,
     rangeLabel: periodKeyOf(year, month),
@@ -352,6 +372,7 @@ export async function buildDeclarationsSummaryData(
 
   return {
     kind: "declarations_summary",
+    branding: await reportBranding(),
     company: reportCompany(company),
     periodLabel: lastPeriod,
     rows,
@@ -465,6 +486,7 @@ export async function buildComplianceReportData(
 
   return {
     kind: "compliance_report",
+    branding: await reportBranding(),
     declarationId: declaration.id,
     declarationLabel: `${authorityLabel} — ${declaration.periodKey}`,
     authority: declaration.authority,
@@ -530,6 +552,7 @@ export async function buildPlatformSummaryData(): Promise<PlatformSummaryReportD
 
   return {
     kind: "platform_summary",
+    branding: await reportBranding(),
     companiesCount: companies.length,
     activeCompaniesCount: companies.length,
     rows,

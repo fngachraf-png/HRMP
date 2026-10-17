@@ -7,6 +7,8 @@ import { LangSwitcher } from "@/components/fwms/lang-switcher";
 import { FwmsLogo } from "@/components/fwms/logo";
 import { LoginForm } from "@/components/fwms/login-form";
 import { getSession } from "@/lib/auth/session";
+import { getPlatformBranding } from "@/lib/branding";
+import { APP_VERSION } from "@/lib/version";
 import { LOCALE_COOKIE, resolveLocale } from "@/i18n/config";
 import { getDictionary, tServer } from "@/i18n/get-dictionary";
 
@@ -23,6 +25,8 @@ export default async function LoginPage() {
 
   const store = await cookies();
   const dict = getDictionary(resolveLocale(store.get(LOCALE_COOKIE)?.value));
+  // هوية مالك المنصة (white-label — SPEC §3.2): الاسم المعروض من القاعدة لا ثابت كود
+  const branding = await getPlatformBranding();
 
   return (
     <div className="fwms-hero-gradient relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-10">
@@ -37,7 +41,7 @@ export default async function LoginPage() {
           <FwmsLogo className="size-14 drop-shadow-lg" />
           <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur">
             <ShieldCheck className="size-3.5" aria-hidden />
-            <span dir="ltr">FWMS · v0.1.0</span>
+            <span dir="ltr">{branding.displayName} · v{APP_VERSION}</span>
           </div>
         </div>
 
