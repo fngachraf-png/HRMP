@@ -47,14 +47,25 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** سطر عنوان/قيمة بمحاذاة الحافة الصحيحة — rtl: الحافة اليمنى (anchor=start + direction=rtl) */
-function line(x: number, y: number, text: string, o?: { size?: number; bold?: boolean; color?: string; align?: "start" | "middle" | "end"; latin?: boolean }): string {
-  const font = o?.latin ? "Noto Sans" : "Noto Naskh Arabic";
+/** سطر بمحاذاة **فيزيائية** داخل الصفحة (إصلاح قصّ الحواف — المسألة 4):
+ * - "start" = النص ينبت من الإحداثي ويمتد يمينًا (عمود اليسار)
+ * - "end"   = النص ينتهي عند الإحداثي ويمتد يسارًا (عمود اليمين)
+ * - "middle" = الإحداثي مركز النص
+ * المحاذاة تُترجم إلى `text-anchor` حسب اتجاه السطر، وإلا خرج النص من حافة الصفحة:
+ * `text-anchor` في SVG محاذاة **نسبية للاتجاه** (في rtl يعني "start" الحافة اليمنى)،
+ * فكانت الأسطر اللاتينية في مستند rtl تُثبَّت عند الحافة اليمنى ثم تمتد خارجها،
+ * والعكس تمامًا لأعمدة اليسار في اللغتين (لقطات الحواف قبل الإصلاح).
+ * خط السطر يتبع لغة المستند: عربي → Naskh + rtl، وإلا Noto Sans + ltr (docFontFamily). */
+function line(x: number, y: number, text: string, o?: { size?: number; bold?: boolean; color?: string; align?: "start" | "middle" | "end" }): string {
+  const rtl = currentRtl;
+  const font = rtl ? "Noto Naskh Arabic" : "Noto Sans";
+  const dirAttr = rtl ? 'direction="rtl"' : 'direction="ltr"';
   const align = o?.align ?? "start";
-  // latin: اتجاه ltr ومحاذاة نهاية (يمين الصفحة في مستند rtl)
-  const dirAttr = o?.latin ? 'direction="ltr"' : ctxDirection();
-  const anchorAttr = o?.latin ? `text-anchor="${align === "start" ? "end" : align}"` : `text-anchor="${align}"`;
-  return `<text x="${x}" y="${y}" ${anchorAttr} ${dirAttr} font-family="${font}" font-size="${o?.size ?? 15}" ${o?.bold ? 'font-weight="700"' : ""} fill="${o?.color ?? INK}">${esc(text)}</text>`;
+  let anchorAttr: string;
+  if (align === "middle") anchorAttr = "middle";
+  else if (align === "start") anchorAttr = rtl ? "end" : "start"; // ينبت من x ويمتد يمينًا
+  else anchorAttr = rtl ? "start" : "end"; // ينتهي عند x ويمتد يسارًا
+  return `<text x="${x}" y="${y}" text-anchor="${anchorAttr}" ${dirAttr} font-family="${font}" font-size="${o?.size ?? 15}" ${o?.bold ? 'font-weight="700"' : ""} fill="${o?.color ?? INK}">${esc(text)}</text>`;
 }
 
 let currentRtl = true;
@@ -95,20 +106,20 @@ function payslipSvg(ctx: Ctx, data: Extract<AnyReportData, { kind: "payslip" }>,
 
   cursor = 124;
   // العامل والفترة
-  body.push(line(RIGHT, cursor, `${L("reports.doc.worker")}: ${data.worker.fullName}`, { size: 16, bold: true }));
-  body.push(line(LEFT, cursor, `${L("reports.doc.period")}: ${periodLabel}`, { size: 13, color: MUTED, align: "end", latin: true }));
+  body.push(line(RIGHT, cursor, `${L("reports.doc.worker")}: ${data.worker.fullName}`, { size: 16, bold: true, align: "end" }));
+  body.push(line(LEFT, cursor, `${L("reports.doc.period")}: ${periodLabel}`, { size: 13, color: MUTED, align: "start" }));
   cursor += 24;
   const metaBits = [data.worker.cin ? `${L("reports.doc.cin")}: ${data.worker.cin}` : null, data.worker.cnssNumber ? `CNSS: ${data.worker.cnssNumber}` : null].filter(Boolean);
-  if (metaBits.length > 0) body.push(line(RIGHT, cursor, metaBits.join("  •  "), { size: 12, color: MUTED }));
+  if (metaBits.length > 0) body.push(line(RIGHT, cursor, metaBits.join("  •  "), { size: 12, color: MUTED, align: "end" }));
   if (metaBits.length > 0) cursor += 20;
 
   // الساعات
   cursor += 8;
-  body.push(line(RIGHT, cursor, `${L("reports.doc.workedMinutes")}: ${docHours(data.totals.workedMinutes)}`, { size: 14 }));
-  body.push(line(LEFT, cursor, `${L("reports.doc.workedDays")}: ${data.totals.workedDays}`, { size: 14, color: MUTED, align: "end", latin: true }));
+  body.push(line(RIGHT, cursor, `${L("reports.doc.workedMinutes")}: ${docHours(data.totals.workedMinutes)}`, { size: 14, align: "end" }));
+  body.push(line(LEFT, cursor, `${L("reports.doc.workedDays")}: ${data.totals.workedDays}`, { size: 14, color: MUTED, align: "start" }));
   if (data.totals.overtimeMinutes > 0) {
     cursor += 22;
-    body.push(line(RIGHT, cursor, `${L("reports.doc.overtimeMinutes")}: ${docHours(data.totals.overtimeMinutes)}`, { size: 14 }));
+    body.push(line(RIGHT, cursor, `${L("reports.doc.overtimeMinutes")}: ${docHours(data.totals.overtimeMinutes)}`, { size: 14, align: "end" }));
   }
 
   // جدول البنود
@@ -163,9 +174,12 @@ function payslipSvg(ctx: Ctx, data: Extract<AnyReportData, { kind: "payslip" }>,
   const qrX = ctx.rtl ? LEFT + 6 : W - LEFT - 96;
   body.push(`<image href="data:image/png;base64,${qrB64}" x="${qrX}" y="${height - 130}" width="92" height="92"/>`);
   const refX = ctx.rtl ? W - LEFT - 6 : LEFT + 6;
-  const refAnchor = ctx.rtl ? "start" : "start";
-  body.push(`<text x="${refX}" y="${height - 92}" text-anchor="${refAnchor}" direction="ltr" font-family="Noto Sans" font-size="12" fill="${INK}">${esc(data.refNumber)}</text>`);
-  body.push(`<text x="${refX}" y="${height - 72}" text-anchor="${refAnchor}" direction="ltr" font-family="Noto Sans" font-size="10" fill="${MUTED}">${esc(ctx.meta.contentHash.slice(0, 24))}</text>`);
+  // المعرّف والبصمة نصوص ltr بمحاذاة فيزيائية: في مستند rtl تنتهي عند الحافة اليمنى (لا تُثبَّت هناك ثم تخرج)
+  const latinAnchor = ctx.rtl ? "end" : "start";
+  // ترجمة التحقق تتبع اتجاه المستند: start في rtl = الحافة اليمنى ✓ وفي ltr = اليسرى ✓
+  const refAnchor = "start";
+  body.push(`<text x="${refX}" y="${height - 92}" text-anchor="${latinAnchor}" direction="ltr" font-family="Noto Sans" font-size="12" fill="${INK}">${esc(data.refNumber)}</text>`);
+  body.push(`<text x="${refX}" y="${height - 72}" text-anchor="${latinAnchor}" direction="ltr" font-family="Noto Sans" font-size="10" fill="${MUTED}">${esc(ctx.meta.contentHash.slice(0, 24))}</text>`);
   body.push(`<text x="${refX}" y="${height - 54}" text-anchor="${refAnchor}" ${ctxDirection()} font-family="Noto Naskh Arabic" font-size="10" fill="${MUTED}">${esc(L("reports.doc.qrCaption"))}</text>`);
   body.push(brandFooter(ctx, height - 20, ctx.meta.refNumber));
 
