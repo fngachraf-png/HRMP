@@ -202,6 +202,22 @@ bash infra/termux/backup-db.sh      # نسخة يدوية عند الحاجة (�
 - **التشغيل المستمر:** `start-server.sh` (لا حاجة لـ pm2 — nohup كافٍ هنا) + `termux-wake-lock` إلزامي (يضيفه السكربت).
 - سجلات: `db/backups/backup.log` (النسخ) و`db/tunnel.log` (النفق).
 
+### 9.1 — إنشاء migration عندما يصل تغيير المخطط من الخارج (مستخلصة 2026-10-16)
+
+عندما يحدّث المساعد الأول `prisma/schema.prisma` في التزامه (ملكيتك للمخطط تبقى هنا)، لا تكتفِ بـ `db push` — أنشئ migration موثّقة بالترتيب:
+
+```bash
+npx prisma migrate diff --from-migrations ./prisma/migrations --to-schema-datamodel ./prisma/schema.prisma --script > /tmp/new.sql
+# راجع /tmp/new.sql (الجداول/FK/الفهارس)، ثم:
+mkdir -p prisma/migrations/<YYYYMMDDHHMMSS>_<اسم_المرحلة>/
+cp /tmp/new.sql prisma/migrations/<المجلد_الجديد>/migration.sql
+npx prisma migrate deploy && npx prisma migrate status
+```
+
+- **لماذا diff وليس نسخًا يدويًا:** المولّد يلتزم تلقائيًا باصطلاحات المخطط (RESTRICT للإلزامية، SET NULL للاختيارية، تسمية الفهارس) — بلا خطأ إملائي.
+- **تحقق إلزامي بعد التطبيق:** `PRAGMA integrity_check;` = ok، و`PRAGMA foreign_key_check;` = صفر انتهاك، و`SELECT count(*) FROM _prisma_migrations WHERE finished_at IS NULL;` = صفر، و`PRAGMA table_info(<الجدول_الجديد>);` ليطابق المخطط.
+- **قبل أي migration:** نسخة يدوية عبر `bash infra/termux/backup-db.sh` (يشهد بها سجل النسخ).
+
 ## 10. معايير قبول مهمتك الأولى (تُقيّم بها) — حالة 2026-10-16
 
 - [x] بيئة Ubuntu تعمل مع Node 22 وSQLite (هنا PRoot Ubuntu 26.04 + Node v22.23 + sqlite3 3.46.1 + bun 1.4.3).

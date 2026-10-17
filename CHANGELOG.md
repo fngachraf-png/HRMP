@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added
+- **قاعدة بيانات الهاتف:** `prisma migrate deploy` للمرحلتين 4+5 معًا — migration `20261016222210_phase4_5_attendance_notifications` (جداول `AttendanceEvent`/`Notification`/`Device` + 11 فهرساً) — `db/fwms.db` = 20 جدولاً، integrity_check=ok وforeign_key_check=0، ومولد `prisma migrate diff` موثّق في DATABASE_GUIDE §9.1 (المساعد الثاني).
+- **بيئة الهاتف:** مراجعة + تنفيذ بذور المرحلة5 (عاملان + سيناريو التغطية اليومي — idempotency مثبت بتشغيل مزدوج) + بناء وتشغيل v0.5.0 على الخادم المحلي + اختبار دخان API شامل **22/22** للمرحلتين4+5 من الهاتف نفسه (المساعد الثاني).
+
 ### Planned (المخطط القادم)
 - **المرحلة 6ج:** المسارات والتصاريح الرسمية (SPEC §12 و§4.6) — سجل المواصفات، مُصدِّرا CNSS/DGI، منشئ المسارات، حزمتا general/agricultural.
 - **المرحلة 7:** التقارير والتصدير (PDF/DOCX/PNG) بأربع لغات وRTL (SPEC §4.4.1).
