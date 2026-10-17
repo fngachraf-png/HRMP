@@ -116,7 +116,8 @@ function newRefNumber(): string {
 
 /** إصدار منطق العرض — يُرفع عند أي إصلاح/تحسين في العارض فيبطل المستندات
  * القديمة (النسخة الجديدة تُنشأ والقديمة تبقى للتدقيق — «لا تعديل بعد التوليد») */
-const RENDERER_VERSION = 8; // v8: إصلاح عملة شريط الصافي في PDF (مقاطع الأبجديات — «د.م.» كانت تظهر حرفًا معطوبًا)
+const RENDERER_VERSION = 9; // v9: إصلاح قصّ النصوص عند حواف PNG (محاذاة فيزيائية واعية بالاتجاه في png.ts)
+// v8: إصلاح عملة شريط الصافي في PDF (مقاطع الأبجديات — «د.م.» كانت تظهر حرفًا معطوبًا)
 // v7: تذييل white-label — إزالة اسم المنتج من تسمية footerOfficial (SPEC §3.2)
 
 function contentHashOf(kind: ReportKind, targetId: string, language: string, data: AnyReportData, options: ReportOptions): string {
