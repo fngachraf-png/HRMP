@@ -5,6 +5,7 @@ import { ShieldCheck, ShieldX, SearchX } from "lucide-react";
 import { LOCALE_COOKIE, localeDirection, localeLabels, resolveLocale } from "@/i18n/config";
 import { getDictionary, tServer } from "@/i18n/get-dictionary";
 import { verifyDocumentByRef } from "@/lib/reports/generate";
+import { getPlatformBranding } from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "FWMS — التحقق من مستند",
@@ -31,6 +32,8 @@ export default async function VerifyPage({ params, searchParams }: Props) {
   const dir = localeDirection[locale];
 
   const result = await verifyDocumentByRef(decodeURIComponent(ref), h ?? null);
+  // هوية مالك المنصة (white-label — SPEC §3.2): صفحة عامة تعرض اسم المالك لا اسم المنتج
+  const branding = await getPlatformBranding();
 
   return (
     <main dir={dir} className="mx-auto flex min-h-[80vh] max-w-lg flex-col items-center justify-center gap-6 p-6">
@@ -49,6 +52,7 @@ export default async function VerifyPage({ params, searchParams }: Props) {
             </div>
 
             <h1 className="text-xl font-bold">{t("reports.verify.title")}</h1>
+            <p className="mt-1 text-xs text-muted-foreground">{branding.displayName}</p>
             <p dir="ltr" className="mt-1 font-mono text-sm text-muted-foreground">
               {decodeURIComponent(ref)}
             </p>

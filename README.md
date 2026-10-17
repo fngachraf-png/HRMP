@@ -35,7 +35,9 @@ npm run dev                 # http://localhost:3000
 | `docs/SPEC.md` | المواصفة المرجعية الكاملة للمنتج |
 | `docs/COORDINATION.md` | تنسيق المساعدين الآليين |
 | `docs/DATABASE_GUIDE.md` | قاعدة البيانات المحلية (Termux/SQLite) |
-| `docs/DEPLOYMENT.md` | النشر (Vercel + Cloudflare) |
+| `docs/DEPLOYMENT.md` | النشر والتشغيل والنقل بين البيئتين |
+| `docs/OWNERSHIP_TRANSFER.md` | نقل ملكية المنصة (white-label) |
+| `docs/SECURITY.md` | قائمة الفحص الأمني المنفّذة |
 | `docs/WORKLOG.md` | سجل جلسات العمل |
 
 ## الحزمة التقنية

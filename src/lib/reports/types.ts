@@ -74,9 +74,23 @@ export type ReportCompany = {
   currency: string; // MAD
 };
 
+/** هوية مالك المنصة (white-label — SPEC §3.2، المرحلة 8) تُضمّن في بيانات كل مستند
+ * فتدخل بصمة المحتوى: تغيّر الهوية (نقل ملكية مثلًا) يولّد إصدارًا جديدًا للوثائق
+ * اللاحقة والقديمة تبقى للتدقيق — مبدأ الثبات نفسه */
+export type ReportBranding = {
+  legalName: string;
+  displayName: string;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  websiteUrl: string | null;
+  footerText: string | null; // تذييل مخصص (SPEC §3.2) — null = الاسم القانوني للمالك
+  termsUrl: string | null;
+};
+
 /** بيانات قسيمة الأجر — كل المبالغ من snapshotJson للكشف المعتمد */
 export type PayslipReportData = {
   kind: "payslip";
+  branding: ReportBranding;
   payslipId: string;
   refNumber: string; // PS-YYYYMM-NNNN
   periodLabel: string; // "2026-10"
@@ -117,6 +131,7 @@ export type SummaryWorkerRow = {
 /** بيانات ملخص أجور الفترة (المدير/المحاسب — كشف الشركة الكامل) */
 export type PayrollSummaryReportData = {
   kind: "payroll_summary";
+  branding: ReportBranding;
   periodId: string;
   periodLabel: string;
   periodStatus: string;
@@ -149,6 +164,7 @@ export type AttendanceRow = {
 /** بيانات بيان الحضور/الساعات (بلا أي رقم أجر — للمشرف والعامل) */
 export type AttendanceReportData = {
   kind: "attendance_statement" | "hours_statement";
+  branding: ReportBranding;
   targetUserId: string;
   workerName: string;
   rangeLabel: string; // "2026-10"
@@ -160,6 +176,7 @@ export type AttendanceReportData = {
 /** بيانات ملخص التصاريح (المحاسب) */
 export type DeclarationsSummaryReportData = {
   kind: "declarations_summary";
+  branding: ReportBranding;
   company: ReportCompany;
   periodLabel: string; // آخر فترة أو "—"
   rows: {
@@ -178,6 +195,7 @@ export type DeclarationsSummaryReportData = {
 /** بيانات تقرير المطابقة (SPEC §4.6: مع كل تصريح — كشوف معتمدة ↔ الملف الرسمي) */
 export type ComplianceReportData = {
   kind: "compliance_report";
+  branding: ReportBranding;
   declarationId: string;
   declarationLabel: string; // "CNSS شهري 2026-10"
   authority: string;
@@ -209,6 +227,7 @@ export type ComplianceReportData = {
 /** بيانات ملخص المنصة (super_admin — عبر الشركات، بلا أسماء عمال) */
 export type PlatformSummaryReportData = {
   kind: "platform_summary";
+  branding: ReportBranding;
   companiesCount: number;
   activeCompaniesCount: number;
   rows: {

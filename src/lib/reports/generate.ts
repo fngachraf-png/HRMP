@@ -116,7 +116,7 @@ function newRefNumber(): string {
 
 /** إصدار منطق العرض — يُرفع عند أي إصلاح/تحسين في العارض فيبطل المستندات
  * القديمة (النسخة الجديدة تُنشأ والقديمة تبقى للتدقيق — «لا تعديل بعد التوليد») */
-const RENDERER_VERSION = 6; // v6: الإجماليات في عمودين + ضغط نهائي — القسيمة في صفحة واحدة
+const RENDERER_VERSION = 7; // v7: تذييل white-label — إزالة اسم المنتج من تسمية footerOfficial (SPEC §3.2)
 
 function contentHashOf(kind: ReportKind, targetId: string, language: string, data: AnyReportData, options: ReportOptions): string {
   // خيارات مؤثرة في العرض تُضمَّن: (includeEmployerShare للقسيمة)
