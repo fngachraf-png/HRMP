@@ -428,7 +428,17 @@ function payslipPage(ctx: Ctx, data: PayslipReportData): React.ReactElement {
           P().View,
           { style: s.netRow },
           React.createElement(P().Text, { style: s.netLabel }, L("reports.doc.net")),
-          React.createElement(P().Text, { style: [s.netValue, { fontFamily: "NotoSans" }] }, money(data.totals.netCents))
+          // العملة «د.م.» عربية داخل سطر لاتيني — مقاطع الأبجديات إلزامية (درس المرحلة 7):
+          // نص خام بخط NotoSans (لاتيني بلا محارف عربية) يُفقد الوصل ويُظهر حرفًا معطوبًا بدل «د.م.»
+          React.createElement(
+            P().Text,
+            { style: [s.netValue, { fontFamily: "NotoSans" }] },
+            (() => {
+              const text = money(data.totals.netCents);
+              const rich = richChildren(ctx, text, "NotoSans");
+              return rich.length > 0 ? rich : text;
+            })()
+          )
         )
       ),
       qrCompactEl(ctx)

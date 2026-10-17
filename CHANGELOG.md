@@ -15,11 +15,17 @@
 - **`sharp` في standalone:** كل توليد PNG كان يرجع `internal_error` (`Could not load the "sharp" module using the linux-arm64 runtime`) لأن سكربت build ينسخ `node_modules/sharp` ولا ينسخ `@img/sharp-<platform>` (ملف `lib/sharp-linux-arm64.node` بـ530KB) ولا `@img/sharp-libvips-<platform>` (`libvips-cpp.so`) — المجلد في standalone كان يحوي `package.json` فقط. **الإصلاح:** `infra/termux/fix-sharp-standalone.sh` (نسخ الحزم الأصلية الخمس + تحقق `require()` فعلي) يستدعى من `start-server.sh` قبل التشغيل — **الدليل:** `POST /api/reports/generate` بصيغة png أعطى `{"refNumber":"RD-261017-E4XZ","size":197520}` بعد أن كان `internal_error`.
 - **`start-server.sh`:** إزالة `-H/-P` المُتجاهَلة من أمر التشغيل واستبدالها بـ`PORT`/`HOSTNAME` في البيئة (درس §9) + استدعاء خطوة sharp.
 
-### Reported — المرحلة 7 (مسائل مرئية رصدها المساعد الثاني — بانتظار إصلاح المساعد الأول في `src/`)
-- **PDF/عربي: التذييل معطوب في كل مستندات PDF** — «وثيقة مولَّدة إلكترونيًا من نظام FWMS» يُرسم حروفًا لاتينية متراكبة فوق بعضها (لا تُقرأ). **الجذر:** `src/lib/reports/pdf.ts:243` يفرض `fontFamily:"NotoSans"` (لا يحوي محارف عربية) على نص عربي ويمرّره خامًا بلا `richChildren()`. **الدليل:** نفس العنصر في القسيمة الإنجليزية سليم حرفيًا؛ والمُتحقَّق من عارضين مستقلين (ghostscript + poppler).
-- **PDF/عربي: عملة الصافي معطوبة** — شريط «الصافي للدفع» يعرض `671,48 ة` بدل `671,48 د.م.` — الجذر نفسه في `pdf.ts:422` (الجداول سليمة لأنها تمر بـ`cellElements`→`richChildren`).
-- **PNG: قصّ النصوص عند حافة الصفحة (غير خاص بالعربية)** — عربيًا «الفترة: أكت…»/«أيام العم…»/رقم القسيمة/البصمة، وإنجليزيًا `per 2026`/`Worke…` — عيب تخطيط في مسار SVG/PNG نفسه (الصافي `د.م.` فيه سليم).
-- **التوثيق الكامل + الأدلة (لقطات/بصمات/أوامر):** `docs/WORKLOG.md` قيد 2026-10-17 «migration المرحلة 7 على الهاتف + بناء v0.8.0».
+### Reported — المرحلة 7 (مسائل مرئية رصدها المساعد الثاني)
+- **PDF/عربي: التذييل معطوب** — ✅ **مُصلَّح** بإضافة `richChildren` لـ`footerEl` في `e86dd51` (المساعد الأول) — أُعيد التحقق إمبرياليًا بعد بناء v0.9.0 من الرابط العام: «وثيقة مولَّدة إلكترونيًّا — FWMS Platform Owner (Demo)» مقروءة بخط Naskh. (الجذر السابق: `fontFamily:"NotoSans"` على نص عربي بلا مقاطع أبجدية — كشفه عارضان مستقلان ومقارنة بالقسيمة الإنجليزية.)
+- **PDF/عربي: عملة الصافي معطوبة** — ✅ **مُصلَّح هذه الجلسة** (راجع «Fixed — المرحلة 7/العارض» أدناه).
+- **PNG: قصّ النصوص عند حافة الصفحة (غير خاص بالعربية)** — عربيًا «الفترة: أكت…»/رقم القسيمة/البصمة، وإنجليزيًا `per 2026`/`Worke…` — عيب تخطيط في مسار SVG/PNG نفسه (الصافي `د.م.` فيه سليم). **مفتوح.**
+
+### Fixed — المرحلة 7/العارض (المساعد الثاني — جلسة v0.9.0 على الهاتف)
+- **عملة شريط الصافي في PDF العربي** (`src/lib/reports/pdf.ts:431`): كانت `671,48 ة` بدل `671,48 د.م.` — `money()` كان يمرّر خامًا داخل `Text` بخط NotoSans (لاتيني بلا محارف عربية). **الإصلاح:** تمرير `richChildren(ctx, text, "NotoSans")` بنمط `cellElements`/`footerEl` + **رفع `RENDERER_VERSION` 7→8** (درس §9: إصلاح العرض = بصمة وإصدار جديدان والقديم يبقى للتدقيق). **الدليل من الرابط العام:** قسيمة `RD-261017-3XUD` **version=2** (لا reused) تُعرض `671,48 د.م.` والصفحة كاملة بلا كسر · `sha256` المُنزَّل = `fileHash` · QR مفكوك → `{"valid":true,"hashMatches":true}` · والنسخة القديمة المعطوبة `RD-261017-8DJW` **v1 ما زالت تُجاب** = «لا تعديل بعد التوليد» مُتحقَّق منه. **فحص شامل:** من 6 مواضع `fontFamily:"NotoSans"` في `pdf.ts` كانت `431` وحدها خامًا بالعربية (3 لاتينية صرفة وواحدة تمرّ بـ`richChildren`).
+
+### Added — بيئة الهاتف (المساعد الثاني — جلسة v0.9.0)
+- **قاعدة بيانات الهاتف — المرحلة 8:** migration `20261017175245_phase8_ownership` مولَّدة بـ`migrate diff` (§9.1) — جدول `OwnershipTransfer` (**34 عمودًا** = 33 دون المعرّف كما وصفه المساعد الأول + فهرسا `state`/`createdAt`) + **5 أعمدة في `PlatformOwner`** (`websiteUrl`/`termsUrl`/`footerText`/`modulesJson`/`transferFreeze`) — `db/fwms.db` = **36 جدولًا**، `integrity_check=ok`، `foreign_key_check=0`، معلّق فعلي 0، **7/7 migrations up to date**، بيانات `PlatformOwner` محفوظة، ونسخة قبلها `fwms-2026-10-17-1751-daily.db` (المساعد الثاني).
+- **بيئة الهاتف:** بناء **v0.9.0** (71 صفحة) + `prisma generate` (النموذجان يعملان) + `fix-sharp-standalone.sh` نسخ **5 حزم `@img`** بعد البناء (البناء يمسحها كل مرة — برهان على ضرورة الخطوة) + الخادم محليًا و`fwms.tarikc.workers.dev` بـ`{"version":"0.9.0","database":"ok"}` + تحقق PDF/PNG والتحقق العام من الرابط العام (المساعد الثاني).
 - (موثَّق SECURITY.md) تشفير حقول CIN/CNSS عند الترحيل لـ PostgreSQL/SQLite SEE — قرار بنية للمالك عند أول عميل حقيقي.
 - (موثَّق SECURITY.md) تفعيل 2FA عمومًا يغطي خطوات نقل الملكية تلقائيًا (حقل `twoFactorEnabled` جاهز).
 
@@ -108,8 +114,7 @@
 - **تحقق بصري (SPEC يوجبه)**: 16 مستندًا (قسيمة × 4 لغات × 3 صيغ + ملخصات + حضور + منصة + مطابقة) → فحص VLM منهجي: عربية متصلة، RTL صحيح، لا tofu، الاسم العربي في المستندات اللاتينية سليم، accents/ñ سليمة — `download/visual-phase7`.
 - **إنتاج standalone مُختبَر فعليًا**: خادم الإنتاج ولّد قسائم PDF/PNG/DOCX جديدة عبر العامل الابن + التحقق العام.
 
-### Added — بيئة الهاتف (المساعد الثاني — قبل دمج هذه الدفعة)
-### Added
+### Added — بيئة الهاتف (المساعد الثاني — جلسة v0.8.0 قبل دمج المرحلة 8)
 - **قاعدة بيانات الهاتف:** `prisma migrate deploy` للمرحلتين 4+5 معًا — migration `20261016222210_phase4_5_attendance_notifications` (جداول `AttendanceEvent`/`Notification`/`Device` + 11 فهرساً) — `db/fwms.db` = 20 جدولاً، integrity_check=ok وforeign_key_check=0، ومولد `prisma migrate diff` موثّق في DATABASE_GUIDE §9.1 (المساعد الثاني).
 - **قاعدة بيانات الهاتف:** **المرحلة 6 كاملة (6أ/6ب + 6ج)** — اعتماد ودفع `20261017013934_phase6_payroll` (6 جداول، أنشأها وطبّقها عمل سابق منقطع دون دفع) + migration جديدة `20261017140824_phase6c_declarations` مولّدة بـ `prisma migrate diff` (§9.1) بـ 8 جداول (`PayRegime`/`RegimeContributionItem`/`RegimeCalcStep`/`RegimeAssignment`/`DeclarationSpec`/`Declaration`/`DeclarationFile`/`DeclarationReceipt`) + عمودا `cin`/`cnssNumber` + 13 فهرساً — `db/fwms.db` = **33 جدولاً**، integrity_check=ok، foreign_key_check=0، صفر migrations عالقة، ونسخة احتياطية إلزامية قبل التطبيق (`fwms-2026-10-17-1407-daily.db`) (المساعد الثاني).
 - **بيئة الهاتف:** مراجعة بذور 6ج (قوالب المسارات الأربعة مطابقة لـ§11.6/§12 + العينات موسومة SAMPLE-NOT-OFFICIAL) + تشغيلها مرتين (**idempotency مثبت بتطابق 15 عدّاداً**) + بناء **v0.7.0** (66 صفحة) + اختبارات 6ج على الهاتف **190/190** (`api-phase6c` 78/78 بخادم dev — العينات محجوزة بـNODE_ENV + `regime-engine` 75/75 + `declarations-pure` 37/37) + قاعدة اختبار منفصلة عبر `migrate deploy` **5/5 من الصفر** + الخادم الرئيسي v0.7.0 يعمل محلياً و`fwms.tarikc.workers.dev` (`database:ok`) (المساعد الثاني).
