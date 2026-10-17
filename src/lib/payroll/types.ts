@@ -142,7 +142,9 @@ export type PayrollWarning =
   | "meals_caps_exceeded"
   | "negative_net"
   | "no_attendance"
-  | "unverified_rules";
+  | "unverified_rules"
+  | "regime_needs_confirmation"
+  | "regime_changed_mid_period";
 
 /** ناتج الحساب الكامل */
 export type Computation = {
@@ -157,6 +159,7 @@ export type Computation = {
     cnssBaseCents: number;
     cnssEmployeeCents: number;
     amoEmployeeCents: number;
+    employeeOtherCents: number; // بنود اقتطاع غير قياسية من مسار مخصص (SPEC §12)
     proDeductionCents: number;
     rniCents: number;
     irGrossCents: number;
@@ -177,7 +180,8 @@ export type ComputeInput = {
   worked: WorkedTime;
   manualLines: ManualLineInput[];
   rules: PayRuleSet;
-  monthlyHoursDivisor: number; // CompanySettings.monthlyHoursDivisor (191 = 44×52/12)
+  monthlyHoursDivisor: number; // CompanySettings.monthlyHoursDivisor (191 = 44×52/12) — أو أساس المسار (فلاحي: 26×8=208)
+  regime?: import("./regime").RegimeDefinition; // المرحلة 6ج: تعريف المسار (بنود + خطوات) — غيابه = سلوك 6أ/6ب
 };
 
 /** خطأ قاعدة مفقودة — لا قيم افتراضية في الكود أبدًا (AGENTS §1.8) */

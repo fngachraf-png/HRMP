@@ -16,7 +16,7 @@ export async function GET() {
     {
       status: healthy ? "ok" : "degraded",
       service: "fwms",
-      version: "0.6.0",
+      version: "0.7.0",
       database,
       timestamp: new Date().toISOString(),
       latencyMs: Date.now() - startedAt,

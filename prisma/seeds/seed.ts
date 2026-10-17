@@ -4,6 +4,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { seedPayRules } from "./pay-rules";
+import { seedRegimes } from "./regimes";
 
 const db = new PrismaClient();
 
@@ -256,7 +257,7 @@ async function main() {
   //     ج) ورديات الأسبوع الفائت + حضور موثَّق كامل: سيناريو أجور قابل للعرض والتوليد
   await db.employeeProfile.upsert({
     where: { id: "profile-employee-1" },
-    update: {},
+    update: { cin: "AB123456", cnssNumber: "1000001" },
     create: {
       id: "profile-employee-1",
       companyId: company.id,
@@ -266,11 +267,13 @@ async function main() {
       transportZone: "urban",
       dependentsCount: 2,
       hireDate: new Date("2024-06-01T00:00:00Z"),
+      cin: "AB123456", // بيانات التصريح التجريبية (المرحلة 6ج)
+      cnssNumber: "1000001",
     },
   });
   await db.employeeProfile.upsert({
     where: { id: "profile-employee-2" },
-    update: {},
+    update: { cin: "CD234567", cnssNumber: "1000002" },
     create: {
       id: "profile-employee-2",
       companyId: company.id,
@@ -280,11 +283,13 @@ async function main() {
       transportZone: "urban",
       dependentsCount: 0,
       hireDate: new Date("2025-03-01T00:00:00Z"),
+      cin: "CD234567",
+      cnssNumber: "1000002",
     },
   });
   await db.employeeProfile.upsert({
     where: { id: "profile-employee-3" },
-    update: {},
+    update: { cin: "EE345678", cnssNumber: "1000003" },
     create: {
       id: "profile-employee-3",
       companyId: company.id,
@@ -294,6 +299,8 @@ async function main() {
       transportZone: "urban",
       dependentsCount: 3,
       hireDate: new Date("2023-01-15T00:00:00Z"),
+      cin: "EE345678",
+      cnssNumber: "1000003",
     },
   });
 
@@ -419,6 +426,38 @@ async function main() {
   }
 
   console.log("✓ المرحلة 6أ/6ب: ملفات أجور 3 عمال (ساعي/ساعي/يومي) + عطل 2026 الثابتة + ورديات وحضور الأسبوع الفائت");
+
+  // 11) المرحلة 6ج — بذور المسارات والتصاريح (⚠️ بانتظار مراجعة المساعد الثاني):
+  //     قوالب المنصة (general/agricultural/حزمتان فارغتان) + عينات مواصفات SAMPLE-NOT-OFFICIAL
+  //     + إسنادات العمال الثلاثة للمسار العام + رقم CNSS للشركة (لتصريح Damancom)
+  await seedRegimes();
+  await db.company.update({
+    where: { id: company.id },
+    data: { cnssNumber: "1234567", taxId: "001234567000089" },
+  });
+  const generalTemplate = await db.payRegime.findFirst({
+    where: { companyId: null, key: "general", isActive: true },
+    orderBy: { version: "desc" },
+  });
+  if (generalTemplate) {
+    for (const [idx, workerId] of (["user-employee", "user-employee-2", "user-employee-3"] as const).entries()) {
+      const existing = await db.regimeAssignment.findFirst({
+        where: { companyId: company.id, workerUserId: workerId },
+      });
+      if (!existing) {
+        await db.regimeAssignment.create({
+          data: {
+            companyId: company.id,
+            regimeId: generalTemplate.id,
+            workerUserId: workerId,
+            effectiveFrom: new Date("2026-01-01T00:00:00Z"),
+            createdBy: "user-owner",
+          },
+        });
+      }
+    }
+    console.log("✓ المرحلة 6ج: إسنادات 3 عمال للمسار العام + CNSS/ICE للشركة التجريبية");
+  }
   console.log(`  كلمة المرور التجريبية للكل: ${DEMO_PASSWORD}`);
   console.log("  owner@fwms.local | admin@demo.ma | accountant@demo.ma | supervisor@demo.ma | worker@demo.ma | worker2@demo.ma | worker3@demo.ma");
 }

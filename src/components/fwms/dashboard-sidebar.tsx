@@ -25,6 +25,9 @@ import {
   ArrowLeftRight,
   CalendarDays,
   ReceiptText,
+  Layers,
+  FileCog,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +59,9 @@ const ALL_ITEMS: NavItem[] = [
   { key: "coverage", labelKey: "dashboard.coverage", icon: ArrowLeftRight, href: "/dashboard/coverage" },
   { key: "verificationPolicies", labelKey: "dashboard.verificationPolicies", icon: ShieldCheck, href: "/dashboard/verification-policies" },
   { key: "payroll", labelKey: "dashboard.payroll", icon: Calculator, href: "/dashboard/payroll" },
+  { key: "regimes", labelKey: "dashboard.regimes", icon: Layers, href: "/dashboard/regimes" },
+  { key: "declarationSpecs", labelKey: "dashboard.declarationSpecs", icon: FileCog, href: "/dashboard/declaration-specs" },
+  { key: "declarations", labelKey: "dashboard.declarations", icon: Landmark, href: "/dashboard/declarations" },
   { key: "holidays", labelKey: "dashboard.holidays", icon: CalendarDays, href: "/dashboard/holidays" },
   { key: "myPayslips", labelKey: "dashboard.myPayslips", icon: ReceiptText, href: "/dashboard/my-payslips" },
   { key: "users", labelKey: "dashboard.users", icon: Users, soon: true },
@@ -71,10 +77,11 @@ export function DashboardSidebar({ role }: { role: string }) {
   // إظهار العناصر بحسب الدور (SPEC §3): العامل يرى الأساسيات وبرنامجه وحضوره وأجوره فقط
   // المرحلة 6أ/6ب: «الأجور» لمن يملك payroll.view (مدير/محاسب/مالك) — «أجوري» للجميع (self.view)
   // «العطل الرسمية» لمستخدمي الأجور (إدخالها admin) — co_admin بلا أرقام أجور (SPEC §4.4.1)
+  // المرحلة 6ج (SPEC §12 و§4.6): المسارات لمستخدمي الأجور — المواصفات والتصاريح للمحاسب/المالك حصرًا
   const visibleKeys: Record<string, string[]> = {
-    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
-    accountant: ["overview", "mySchedule", "myAttendance", "payroll", "holidays", "myPayslips", "reports", "audit"],
-    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
+    super_admin: ["overview", "companies", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "regimes", "declarationSpecs", "declarations", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
+    accountant: ["overview", "mySchedule", "myAttendance", "payroll", "regimes", "declarationSpecs", "declarations", "holidays", "myPayslips", "reports", "audit"],
+    admin: ["overview", "branches", "projects", "sites", "groups", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "verificationPolicies", "payroll", "regimes", "holidays", "myPayslips", "users", "reports", "audit", "settings"],
     co_admin: ["overview", "shiftTemplates", "shifts", "recurrences", "mySchedule", "myAttendance", "attendance", "coverage", "myPayslips", "reports"],
     employee: ["overview", "mySchedule", "myAttendance", "myPayslips", "reports"],
   };
@@ -132,7 +139,7 @@ export function DashboardSidebar({ role }: { role: string }) {
 
       {/* نسخة المرحلة */}
       <div className="border-t border-sidebar-border px-4 py-3 text-[11px] text-sidebar-foreground/60">
-        <span dir="ltr">v0.6.0 — Phase 6</span>
+        <span dir="ltr">v0.7.0 — Phase 6</span>
       </div>
     </aside>
   );

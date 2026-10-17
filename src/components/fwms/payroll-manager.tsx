@@ -147,6 +147,8 @@ export function PayrollManager({ role, canApprove }: { role: string; canApprove:
       if (e.code === "future_period") return t("payroll.futurePeriod");
       if (e.code === "smig_breached") return t("payroll.smigBlocked");
       if (e.code === "unverified_rules") return t("payroll.unverifiedBlocked");
+      if (e.code === "regime_needs_confirmation") return t("payroll.regimeNeedsConfirmation");
+      if (e.code === "regime_incomplete") return t("payroll.regimeIncomplete");
       if (e.code === "no_payslips") return t("payroll.noPayslips");
       if (e.code === "period_not_draft") return t("payroll.notDraft");
       if (e.code === "period_not_reviewing") return t("payroll.notReviewing");

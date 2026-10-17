@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 export const NOTIFICATION_TYPES = [
   "shift_replacement_assigned", // وردية تغطية أُسندت إليك
   "payslip_approved", // كشف أجرك للفترة اعتُمد وجاهز في «أجوري» (المرحلة 6أ/6ب)
+  "declaration_review_requested", // تصريح CNSS/DGI جاهز لمراجعتك (المرحلة 6ج — للمحاسب)
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -26,6 +27,12 @@ export type PayslipApprovedPayload = {
   refNumber: string; // رقم الكشف المرجعي
 };
 
+export type DeclarationReviewPayload = {
+  declarationId: string;
+  authority: string; // cnss | dgi
+  periodKey: string;
+};
+
 export type NotificationRecord = {
   id: string;
   type: string;
@@ -39,7 +46,7 @@ export async function createNotification(input: {
   companyId: string;
   userId: string;
   type: NotificationType;
-  payload: ReplacementPayload | PayslipApprovedPayload;
+  payload: ReplacementPayload | PayslipApprovedPayload | DeclarationReviewPayload;
 }): Promise<string | null> {
   try {
     const record = await db.notification.create({
@@ -128,7 +135,7 @@ function vapidConfig(): { publicKey: string; privateKey: string; subject: string
 export async function dispatchWebPush(
   userId: string,
   type: string,
-  payload: ReplacementPayload | PayslipApprovedPayload,
+  payload: ReplacementPayload | PayslipApprovedPayload | DeclarationReviewPayload,
 ): Promise<{ sent: number; deactivated: number }> {
   const cfg = vapidConfig();
   const devices = await db.device.findMany({ where: { userId, isActive: true }, take: 20 });

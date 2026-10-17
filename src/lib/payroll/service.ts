@@ -11,6 +11,15 @@ import { createNotification } from "@/lib/notifications";
 import { buildRuleSet, ENGINE_RULE_KEYS, type RawPayRule } from "./rules";
 import { computeWorkedTime } from "./hours";
 import { computePayslip } from "./compute";
+import {
+  buildRegimeDefinition,
+  generalRegimeFromRules,
+  InvalidRegimeError,
+  type RawCalcStepRow,
+  type RawContributionRow,
+  type RawRegimeRow,
+  type RegimeDefinition,
+} from "./regime";
 import type {
   ComputedLine,
   ComputeInput,
@@ -74,6 +83,74 @@ export async function resolvePayRules(companyId: string, at: Date): Promise<PayR
   return buildRuleSet(raw, at, companyId);
 }
 
+// ── حل مسار العامل (SPEC §12 — المرحلة 6ج) ─────────────────────
+
+export type WorkerRegimeResolution = {
+  regime: RegimeDefinition;
+  changedMidPeriod: boolean; // انتقال بين مسارين داخل الفترة (SPEC §12: يقسم الشهر — تحذير في 6ج)
+};
+
+/** آخر إسناد ساري للعامل — أو المسار العام (قالب المنصة ← بذور ← fallback من القواعد) */
+export async function resolveWorkerRegime(
+  companyId: string,
+  workerUserId: string,
+  window: { startUtc: Date; endUtc: Date }
+): Promise<WorkerRegimeResolution> {
+  const assignments = await db.regimeAssignment.findMany({
+    where: {
+      companyId,
+      workerUserId,
+      effectiveFrom: { lt: window.endUtc },
+      OR: [{ endedAt: null }, { endedAt: { gt: window.startUtc } }],
+    },
+    orderBy: { effectiveFrom: "asc" },
+    include: { regime: true },
+  });
+
+  // المسار الساري عند بداية الفترة (SPEC §4.4.1: قواعد بداية الفترة)
+  let applicable = assignments
+    .filter((a) => a.effectiveFrom.getTime() <= window.startUtc.getTime())
+    .pop() ?? null;
+  if (!applicable && assignments.length > 0) {
+    // إسناد بدأ داخل الفترة (انتقال) — يُحسب عليه المسار الجديد مع تحذير تقسيم الشهر
+    applicable = assignments[0];
+  }
+  const changedMidPeriod = assignments.some(
+    (a) => a.effectiveFrom.getTime() > window.startUtc.getTime() && a.effectiveFrom.getTime() < window.endUtc.getTime()
+  );
+
+  let regimeRow: RawRegimeRow | null = null;
+  let contributions: RawContributionRow[] = [];
+  let steps: RawCalcStepRow[] = [];
+
+  if (applicable) {
+    regimeRow = applicable.regime as unknown as RawRegimeRow;
+    const items = await db.regimeContributionItem.findMany({ where: { regimeId: applicable.regimeId } });
+    const stepRows = await db.regimeCalcStep.findMany({ where: { regimeId: applicable.regimeId } });
+    contributions = items as unknown as RawContributionRow[];
+    steps = stepRows as unknown as RawCalcStepRow[];
+  } else {
+    // لا إسناد → قالب المسار العام للمنصة (سلوك متوافق مع 6أ/6ب قبل بذور المسارات)
+    const platformGeneral = await db.payRegime.findFirst({
+      where: { companyId: null, key: "general", isActive: true },
+      include: { contributionItems: true, calcSteps: true },
+      orderBy: { version: "desc" },
+    });
+    if (platformGeneral) {
+      regimeRow = platformGeneral as unknown as RawRegimeRow;
+      contributions = platformGeneral.contributionItems as unknown as RawContributionRow[];
+      steps = platformGeneral.calcSteps as unknown as RawCalcStepRow[];
+    }
+  }
+
+  const rules = await resolvePayRules(companyId, window.startUtc);
+  if (!regimeRow) {
+    // البذور لم تُشغّل بعد — fallback آمن مطابق لسلوك 6أ/6ب (يُبنى من pay_rules مباشرة)
+    return { regime: generalRegimeFromRules(rules), changedMidPeriod };
+  }
+  return { regime: buildRegimeDefinition(regimeRow, contributions, steps), changedMidPeriod };
+}
+
 // ── الحساب لعامل واحد (قلب التوليد) ──────────────────────────────
 
 type WorkerComputation = {
@@ -90,10 +167,22 @@ export async function computeWorkerPayslip(
   profile: { payType: string; hourlyRateCents: number | null; dailyRateCents: number | null; monthlyCents: number | null; dependentsCount: number; transportZone: string },
   year: number,
   month: number,
-  extraManual: ManualLineInput[] = []
-): Promise<WorkerComputation> {
+  extraManual: ManualLineInput[] = [],
+  preResolved?: WorkerRegimeResolution
+): Promise<WorkerComputation & { regime: RegimeDefinition }> {
   const win = periodWindow(year, month, tz);
   const rules = await resolvePayRules(companyId, win.startUtc); // قواعد بداية الفترة (SPEC §4.4.1)
+
+  // مسار العامل (SPEC §12 — المرحلة 6ج): بنود الاشتراكات وخطوات الضريبة من البيانات
+  const { regime, changedMidPeriod } = preResolved ?? (await resolveWorkerRegime(companyId, workerUserId, win));
+  if (regime.bundleStatus === "incomplete") {
+    const missing: string[] = [];
+    if (regime.contributions.length === 0) missing.push("contribution_items");
+    if (regime.steps.length === 0) missing.push("calc_steps");
+    if (regime.minWageCents <= 0) missing.push("min_wage");
+    fail(422, "regime_incomplete", { regimeKey: regime.key, missing: missing.length > 0 ? missing : ["bundle_incomplete"] });
+  }
+
   const holidays = await db.holiday.findMany({
     where: { companyId, localDate: { gte: win.startLocal, lt: win.endLocal } },
     select: { localDate: true },
@@ -140,13 +229,14 @@ export async function computeWorkerPayslip(
   // نُبقي الأزواج التي بدأ دخولها داخل نافذة الفترة فعليًا (بداية الزوج = فترة استحقاقه)
   const keptAttSlices = attSlices.filter((s) => s.startMs >= win.startUtc.getTime() && s.startMs < win.endUtc.getTime());
 
+  // حدود الليل والعتبة الأسبوعية تتبع المسار (الفلاحي: 5:00–20:00 و48س — SPEC §12)
   const worked = computeWorkedTime(keptAttSlices, scheduledSlices, scheduledBreakMinutes, {
     timezone: tz,
     restDay: settings.restDay,
     holidays: holidays.map((h) => h.localDate),
-    nightStartMin: rules.nightStartMin,
-    nightEndMin: rules.nightEndMin,
-    weeklyThresholdMin: rules.weeklyHours * 60,
+    nightStartMin: regime.nightStartMin,
+    nightEndMin: regime.nightEndMin,
+    weeklyThresholdMin: regime.weeklyHours * 60,
   });
 
   const employee: EmployeeInput = {
@@ -165,9 +255,14 @@ export async function computeWorkerPayslip(
     worked,
     manualLines: extraManual,
     rules,
-    monthlyHoursDivisor: settings.monthlyHoursDivisor,
+    // القاسم الشهري: أساس المسار للفلاحي (26×8=208س) وإلا إعداد الشركة (191 = 44×52/12)
+    monthlyHoursDivisor:
+      regime.bundle === "agricultural" ? regime.monthlyDaysBasis * regime.dailyHours : settings.monthlyHoursDivisor,
+    regime,
   };
-  return { computation: computePayslip(input), daily: worked.daily, rules };
+  const computation = computePayslip(input);
+  if (changedMidPeriod) computation.warnings.push("regime_changed_mid_period");
+  return { computation, daily: worked.daily, rules, regime };
 }
 
 function lineToDb(payslipId: string, line: ComputedLine, createdByUserId?: string) {
@@ -450,6 +545,31 @@ export async function generatePeriod(session: Session, periodId: string) {
   }
   eligible.sort((a, b) => a.fullName.localeCompare(b.fullName, "ar"));
 
+  // حل مسارات العمال مسبقًا (SPEC §12 — الحزمة غير المكتملة تمنع التوليد وتعرض ما ينقص)
+  const regimeByWorker = new Map<string, WorkerRegimeResolution>();
+  for (const w of eligible) {
+    try {
+      regimeByWorker.set(w.userId, await resolveWorkerRegime(session.companyId, w.userId, win));
+    } catch (error) {
+      if (error instanceof InvalidRegimeError) {
+        skipped.push({ userId: w.userId, fullName: w.fullName, reason: `regime_invalid: ${error.fields.join(",")}` });
+        continue;
+      }
+      throw error;
+    }
+  }
+  const regimeEligible = eligible.filter((w) => regimeByWorker.has(w.userId));
+  const incomplete: { userId: string; fullName: string; regimeKey: string }[] = [];
+  for (const w of regimeEligible) {
+    const r = regimeByWorker.get(w.userId)!.regime;
+    if (r.bundleStatus === "incomplete") {
+      incomplete.push({ userId: w.userId, fullName: w.fullName, regimeKey: r.key });
+    }
+  }
+  if (incomplete.length > 0) {
+    fail(422, "regime_incomplete", { workers: incomplete });
+  }
+
   const before = await db.payslip.count({ where: { periodId: period.id } });
 
   await db.$transaction(async (tx) => {
@@ -458,9 +578,10 @@ export async function generatePeriod(session: Session, periodId: string) {
       await tx.payslipLine.deleteMany({ where: { payslipId: { in: old.map((o) => o.id) } } });
       await tx.payslip.deleteMany({ where: { periodId: period.id } });
     }
-    for (const [idx, w] of eligible.entries()) {
+    for (const [idx, w] of regimeEligible.entries()) {
       const { computation, daily } = await computeWorkerPayslip(
-        session.companyId, session.companyTimezone, settings, w.userId, w.profile, period.year, period.month
+        session.companyId, session.companyTimezone, settings, w.userId, w.profile, period.year, period.month,
+        [], regimeByWorker.get(w.userId)
       );
       const payslip = await tx.payslip.create({
         data: {
@@ -508,10 +629,10 @@ export async function generatePeriod(session: Session, periodId: string) {
     entity: "pay_period",
     entityId: period.id,
     before: { payslipCount: before },
-    after: { created: eligible.length, skipped: skipped.length },
+    after: { created: regimeEligible.length, skipped: skipped.length },
   });
 
-  return { created: eligible.length, skipped };
+  return { created: regimeEligible.length, skipped };
 }
 
 /** مسودة → مراجعة (تُعرض للمحاسب) — يتطلب توليدًا مسبقًا */
@@ -582,6 +703,21 @@ export async function approvePeriod(session: Session, periodId: string) {
   );
   if (unverifiedKeys.length > 0) {
     fail(422, "unverified_rules", { keys: unverifiedKeys });
+  }
+
+  // المرحلة 6ج (SPEC §12): مسار يحتاج تأكيد المحاسب (الفلاحي) يمنع الاعتماد حتى يُؤكَّد مرة واحدة
+  const needsConfirmation = payslips.filter((p) => {
+    try {
+      const warnings = JSON.parse(p.warningsJson ?? "[]") as string[];
+      return warnings.includes("regime_needs_confirmation");
+    } catch {
+      return false;
+    }
+  });
+  if (needsConfirmation.length > 0) {
+    fail(422, "regime_needs_confirmation", {
+      workers: needsConfirmation.map((p) => ({ refNumber: p.refNumber, fullName: p.worker?.fullName ?? p.workerUserId })),
+    });
   }
 
   await db.$transaction(async (tx) => {

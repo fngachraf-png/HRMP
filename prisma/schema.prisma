@@ -18,16 +18,16 @@ datasource db {
 
 /// كيان مالك المنصة (white-label) — ليس حسابًا شخصيًا (SPEC §3.2)
 model PlatformOwner {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   legalName       String
   displayName     String
   contactEmail    String?
   contactPhone    String?
   logoUrl         String?
-  defaultLocale   String    @default("ar")
-  defaultCurrency String    @default("MAD")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  defaultLocale   String   @default("ar")
+  defaultCurrency String   @default("MAD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   companies Company[]
 }
@@ -47,27 +47,31 @@ model Company {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  platformOwner PlatformOwner?     @relation(fields: [platformOwnerId], references: [id])
-  memberships   UserMembership[]
-  grants        AccountantGrant[]
-  settings      CompanySettings?
-  payRules      PayRule[]
+  platformOwner        PlatformOwner?       @relation(fields: [platformOwnerId], references: [id])
+  memberships          UserMembership[]
+  grants               AccountantGrant[]
+  settings             CompanySettings?
+  payRules             PayRule[]
   verificationPolicies VerificationPolicy[]
-  auditLogs     AuditLog[]
-  branches      Branch[]
-  projects      Project[]
-  sites         Site[]
-  workerGroups  WorkerGroup[]
-  shiftTemplates ShiftTemplate[]
-  shifts        Shift[]
-  shiftRecurrences ShiftRecurrence[]
-  attendanceEvents AttendanceEvent[]
-  notifications Notification[]
-  holidays      Holiday[]
-  employeeProfiles EmployeeProfile[]
-  payPeriods    PayPeriod[]
-  payslips      Payslip[]
-  ledgerEntries LedgerEntry[]
+  auditLogs            AuditLog[]
+  branches             Branch[]
+  projects             Project[]
+  sites                Site[]
+  workerGroups         WorkerGroup[]
+  shiftTemplates       ShiftTemplate[]
+  shifts               Shift[]
+  shiftRecurrences     ShiftRecurrence[]
+  attendanceEvents     AttendanceEvent[]
+  notifications        Notification[]
+  holidays             Holiday[]
+  employeeProfiles     EmployeeProfile[]
+  payPeriods           PayPeriod[]
+  payslips             Payslip[]
+  ledgerEntries        LedgerEntry[]
+  payRegimes           PayRegime[]
+  regimeAssignments    RegimeAssignment[]
+  declarationSpecs     DeclarationSpec[]
+  declarations         Declaration[]
 
   @@index([status])
 }
@@ -87,16 +91,16 @@ model User {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  memberships  UserMembership[]
-  grants       AccountantGrant[]
-  auditActions AuditLog[]
-  workerShifts      Shift[] @relation("ShiftWorker")
+  memberships       UserMembership[]
+  grants            AccountantGrant[]
+  auditActions      AuditLog[]
+  workerShifts      Shift[]           @relation("ShiftWorker")
   workerRecurrences ShiftRecurrence[] @relation("RecurrenceWorker")
-  attendanceEvents AttendanceEvent[] @relation("AttendanceWorker")
-  notifications  Notification[] @relation("NotificationRecipient")
-  pushDevices    Device[] @relation("DeviceOwner")
-  employeeProfiles EmployeeProfile[] @relation("EmployeeProfileUser")
-  payslips      Payslip[] @relation("PayslipWorker")
+  attendanceEvents  AttendanceEvent[] @relation("AttendanceWorker")
+  notifications     Notification[]    @relation("NotificationRecipient")
+  pushDevices       Device[]          @relation("DeviceOwner")
+  employeeProfiles  EmployeeProfile[] @relation("EmployeeProfileUser")
+  payslips          Payslip[]         @relation("PayslipWorker")
 
   @@index([isActive])
 }
@@ -174,8 +178,8 @@ model Project {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  company Company  @relation(fields: [companyId], references: [id])
-  branch  Branch?  @relation(fields: [branchId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
   sites   Site[]
 
   @@index([companyId, status])
@@ -198,13 +202,13 @@ model Site {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company             Company              @relation(fields: [companyId], references: [id])
-  branch              Branch?              @relation(fields: [branchId], references: [id])
-  project             Project?             @relation(fields: [projectId], references: [id])
+  company              Company              @relation(fields: [companyId], references: [id])
+  branch               Branch?              @relation(fields: [branchId], references: [id])
+  project              Project?             @relation(fields: [projectId], references: [id])
   verificationPolicies VerificationPolicy[]
-  shifts             Shift[]
-  shiftRecurrences   ShiftRecurrence[]
-  attendanceEvents   AttendanceEvent[]
+  shifts               Shift[]
+  shiftRecurrences     ShiftRecurrence[]
+  attendanceEvents     AttendanceEvent[]
 
   @@index([companyId, status])
   @@index([companyId, branchId])
@@ -247,7 +251,7 @@ model ShiftTemplate {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  company     Company          @relation(fields: [companyId], references: [id])
+  company     Company           @relation(fields: [companyId], references: [id])
   shifts      Shift[]
   recurrences ShiftRecurrence[]
 
@@ -257,7 +261,7 @@ model ShiftTemplate {
 
 /// وردية مجدولة (إسناد عامل لموقع بوقت محدد) — وحدة منع التعارض: عامل في موقعين بنفس الوقت ممنوع (SPEC §4.1)
 model Shift {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   companyId       String
   workerUserId    String
   siteId          String
@@ -266,19 +270,19 @@ model Shift {
   localDate       String // "YYYY-MM-DD" بتوقيت الشركة (يوم بداية الوردية)
   startsAt        DateTime // UTC
   endsAt          DateTime // UTC — قد تعبر منتصف الليل (SPEC §11.4: وردية 22:00–06:00)
-  breakMinutes    Int       @default(0)
-  status          String    @default("scheduled") // scheduled | cancelled
-  source          String    @default("manual") // manual | recurrence | rotation | replacement
+  breakMinutes    Int      @default(0)
+  status          String   @default("scheduled") // scheduled | cancelled
+  source          String   @default("manual") // manual | recurrence | rotation | replacement
   notes           String?
   createdByUserId String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  company    Company          @relation(fields: [companyId], references: [id])
-  worker     User             @relation("ShiftWorker", fields: [workerUserId], references: [id])
-  site       Site             @relation(fields: [siteId], references: [id])
-  template   ShiftTemplate?   @relation(fields: [templateId], references: [id])
-  recurrence ShiftRecurrence? @relation(fields: [recurrenceId], references: [id])
+  company          Company           @relation(fields: [companyId], references: [id])
+  worker           User              @relation("ShiftWorker", fields: [workerUserId], references: [id])
+  site             Site              @relation(fields: [siteId], references: [id])
+  template         ShiftTemplate?    @relation(fields: [templateId], references: [id])
+  recurrence       ShiftRecurrence?  @relation(fields: [recurrenceId], references: [id])
   attendanceEvents AttendanceEvent[]
 
   @@index([companyId, workerUserId, startsAt])
@@ -329,7 +333,7 @@ model AttendanceEvent {
   shiftId          String? // الوردية المرتبطة إن وُجدت مطابقة زمنية
   type             String // check_in | check_out
   occurredAt       DateTime // وقت العميل المُبلَّغ (UTC)
-  recordedAt       DateTime @default(now()) // وقت الخادم الفاصل (UTC) — المرجع
+  recordedAt       DateTime  @default(now()) // وقت الخادم الفاصل (UTC) — المرجع
   latitude         Float // [-90, 90]
   longitude        Float // [-180, 180]
   accuracyM        Float? // دقة GPS المُبلَّغة بالمتر
@@ -349,10 +353,10 @@ model AttendanceEvent {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  company Company           @relation(fields: [companyId], references: [id])
-  worker  User             @relation("AttendanceWorker", fields: [workerUserId], references: [id])
-  site    Site             @relation(fields: [siteId], references: [id])
-  shift   Shift?           @relation(fields: [shiftId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  worker  User    @relation("AttendanceWorker", fields: [workerUserId], references: [id])
+  site    Site    @relation(fields: [siteId], references: [id])
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
 
   @@index([companyId, workerUserId, occurredAt])
   @@index([companyId, siteId, occurredAt])
@@ -366,16 +370,16 @@ model AttendanceEvent {
 
 /// إعدادات الشركة (SPEC §11): قيم العمل بقيم افتراضية مغربية
 model CompanySettings {
-  id                  String   @id @default(cuid())
-  companyId           String   @unique
-  workWeekHours       Int      @default(44)
-  restDay             Int      @default(5) // 0=الأحد … 5=الجمعة
-  monthlyHoursDivisor Int      @default(191)
-  overtimeCapAnnual   Int? // اختياري (SPEC §11.4)
-  showWagesToSupervisor Boolean @default(false)
-  dualApprovalEnabled Boolean @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  companyId             String   @unique
+  workWeekHours         Int      @default(44)
+  restDay               Int      @default(5) // 0=الأحد … 5=الجمعة
+  monthlyHoursDivisor   Int      @default(191)
+  overtimeCapAnnual     Int? // اختياري (SPEC §11.4)
+  showWagesToSupervisor Boolean  @default(false)
+  dualApprovalEnabled   Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id])
 }
@@ -525,13 +529,15 @@ model EmployeeProfile {
   transportZone   String    @default("urban") // urban | outside — سقف تعويض النقل المعفى (SPEC §11.6)
   dependentsCount Int       @default(0) // الأعباء العائلية للـ IR — تُدخلها الإدارة بوثائق (SPEC §11.6)
   hireDate        DateTime? // لعلاوة الأقدمية لاحقًا (تحتاج مراجعة محاسب — SPEC §11.6)
+  cin             String? // رقم البطاقة الوطنية — إلزامي للتصاريح الرسمية (SPEC §4.6: رفض الملف بدونه)
+  cnssNumber      String? // رقم CNSS للعامل — إلزامي لتصريح Damancom (SPEC §4.6)
   status          String    @default("active") // active | archived
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  company  Company   @relation(fields: [companyId], references: [id])
-  user     User      @relation("EmployeeProfileUser", fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  user    User    @relation("EmployeeProfileUser", fields: [userId], references: [id])
 
   @@unique([companyId, userId])
   @@index([companyId, status])
@@ -563,35 +569,35 @@ model PayPeriod {
 /// كشف أجر عامل لفترة واحدة (SPEC §5: payslips): رقم مرجعي فريد + كل المبالغ بالسنتيم
 /// snapshotJson تُجمَّد عند الاعتماد (SPEC §4.4.1: المستند المعتمد لا يتغير)
 model Payslip {
-  id                   String    @id @default(cuid())
+  id                   String   @id @default(cuid())
   companyId            String
   periodId             String
   workerUserId         String
   refNumber            String // PS-YYYYMM-NNNN — فريد داخل الشركة
-  workedMinutes        Int       @default(0) // صافي مدفوع الأساس (بدون دقائق الإضافي)
-  breakMinutes         Int       @default(0) // استراحات مخصومة من المجدول
-  overtimeMinutes      Int       @default(0) // مجموع دقائق الإضافي بكل النسب
-  workedDays           Int       @default(0) // أيام عمل فعلية (سقوف منح الوجبات اليومية)
-  grossCents           Int       @default(0) // الأجر الإجمالي (brut)
-  sbiCents             Int       @default(0) // الإجمالي الخاضع للـ IR (بعد المعفاة)
-  cnssBaseCents        Int       @default(0) // الأساس الخاضع للـ CNSS/AMO
-  cnssEmployeeCents    Int       @default(0) // حصة الأجير CNSS (قصير + طويل بسقف 6000)
-  amoEmployeeCents     Int       @default(0) // حصة الأجير AMO (بلا سقف)
-  proDeductionCents    Int       @default(0) // الحصة المهنية
-  rniCents             Int       @default(0) // الدخل الصافي الخاضع
-  irGrossCents         Int       @default(0) // IR قبل الأعباء العائلية
-  familyDeductionCents Int       @default(0) // خصم الأعباء العائلية (سقف 6 أشخاص)
-  irNetCents           Int       @default(0) // IR الصافي (لا ينزل عن صفر)
-  netCents             Int       @default(0) // الصافي للدفع
-  employerCostCents    Int       @default(0) // اشتراكات المشغّل (تكلفة فوق الإجمالي)
-  totalCostCents       Int       @default(0) // إجمالي تكلفة المشغّل (gross + اشتراكات)
-  smigBreached         Boolean   @default(false) // أقل من الحد الأدنى — يمنع الاعتماد (SPEC §11.2)
+  workedMinutes        Int      @default(0) // صافي مدفوع الأساس (بدون دقائق الإضافي)
+  breakMinutes         Int      @default(0) // استراحات مخصومة من المجدول
+  overtimeMinutes      Int      @default(0) // مجموع دقائق الإضافي بكل النسب
+  workedDays           Int      @default(0) // أيام عمل فعلية (سقوف منح الوجبات اليومية)
+  grossCents           Int      @default(0) // الأجر الإجمالي (brut)
+  sbiCents             Int      @default(0) // الإجمالي الخاضع للـ IR (بعد المعفاة)
+  cnssBaseCents        Int      @default(0) // الأساس الخاضع للـ CNSS/AMO
+  cnssEmployeeCents    Int      @default(0) // حصة الأجير CNSS (قصير + طويل بسقف 6000)
+  amoEmployeeCents     Int      @default(0) // حصة الأجير AMO (بلا سقف)
+  proDeductionCents    Int      @default(0) // الحصة المهنية
+  rniCents             Int      @default(0) // الدخل الصافي الخاضع
+  irGrossCents         Int      @default(0) // IR قبل الأعباء العائلية
+  familyDeductionCents Int      @default(0) // خصم الأعباء العائلية (سقف 6 أشخاص)
+  irNetCents           Int      @default(0) // IR الصافي (لا ينزل عن صفر)
+  netCents             Int      @default(0) // الصافي للدفع
+  employerCostCents    Int      @default(0) // اشتراكات المشغّل (تكلفة فوق الإجمالي)
+  totalCostCents       Int      @default(0) // إجمالي تكلفة المشغّل (gross + اشتراكات)
+  smigBreached         Boolean  @default(false) // أقل من الحد الأدنى — يمنع الاعتماد (SPEC §11.2)
   warningsJson         String? // JSON نصي: تحذيرات (تجاوز سقوف معفاة، قواعد غير موثقة...)
   rulesJson            String? // مرجعية القواعد المستخدمة (key → value/source/effectiveFrom) — SPEC 6ب
   dailyJson            String? // تفصيل أيام العمل (شفافية «كيف حُسب كل مبلغ» — SPEC §4.3)
   snapshotJson         String? // نسخة ثابتة عند الاعتماد
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   company Company       @relation(fields: [companyId], references: [id])
   period  PayPeriod     @relation(fields: [periodId], references: [id])
@@ -615,9 +621,9 @@ model PayslipLine {
   minutes         Int? // للبنود الزمنية (أساس/إضافي)
   rateBp          Int? // النسبة المطبقة أساس 10000 (بنود الإضافي/الاقتطاعات)
   amountCents     Int // موجب = استحقاق، سالب = خصم/اقتطاع
-  exemptIrCents   Int       @default(0) // الجزء المعفى من IR ضمن البند (الباقي خاضع)
-  exemptCnssCents Int       @default(0) // الجزء المعفى من CNSS/AMO ضمن البند
-  order           Int       @default(0) // ترتيب العرض في القسيمة
+  exemptIrCents   Int      @default(0) // الجزء المعفى من IR ضمن البند (الباقي خاضع)
+  exemptCnssCents Int      @default(0) // الجزء المعفى من CNSS/AMO ضمن البند
+  order           Int      @default(0) // ترتيب العرض في القسيمة
   label           String? // تسمية البنود اليدوية (المولَّة آليًا تُترجم من kind)
   reason          String? // سبب البند اليدوي — «كل بند له سبب ومنشئ» (SPEC §4.3)
   createdByUserId String? // منشئ البند اليدوي
@@ -647,4 +653,205 @@ model LedgerEntry {
 
   @@index([companyId, createdAt])
   @@index([payslipId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// المسارات والتصاريح الرسمية (SPEC §12 و§4.6 — المرحلة 6ج)
+// ⚠️ ملكية المخطط للمساعد الثاني (COORDINATION §3) — نُفِّذت هنا لسابقة المراحل 4/5/6أ/6ب
+// وغياب بيئة المساعد الثاني — **يُرجى مراجعتها واعتمادها + migration موقّعة (4+5+6 معًا)**.
+// القواعد النافذة: تعريف المسار بيانات لا كود (SPEC §12) | الحزمة غير المكتملة تمنع الاعتماد
+// | لا يُصدَّر ملف رسمي بلا مواصفة مفعّلة واعتماد محاسب (SPEC §4.6) | الملف المُصدَّر ثابت + hash
+// | عينات الاختبار موسومة isSample ولا تُفعَّل في الإنتاج أبدًا (SPEC §4.6)
+// ─────────────────────────────────────────────────────────────
+
+/// مسار أجور (SPEC §12): تعريف كامل من البيانات — الحد الأدنى، المدة، الليل، الاشتراكات كقائمة بنود،
+/// خطوات الضريبة كقائمة قابلة للتركيب، وملف التصريح المرتبط (declaration_profile)
+/// companyId=null يعني قالب منصة (general/agricultural/الحزم الفارغة)؛ الشركة تنسخ وتعدّل نسختها
+model PayRegime {
+  id                          String    @id @default(cuid())
+  companyId                   String? // null = قالب منصة
+  key                         String // general | agricultural | public_civil_service | public_entreprise | custom-<slug>
+  name                        String // اسم العرض (يُترجم المفتاح المعياري، والاسم الحر يُعرض كما هو)
+  bundle                      String    @default("general") // general | agricultural | public_civil_service | public_entreprise | custom
+  bundleStatus                String    @default("incomplete") // complete | incomplete — غير المكتملة تمنع اعتماد الكشوف
+  minWageType                 String    @default("hourly") // hourly (SMIG) | daily (SMAG)
+  minWageCents                Int // الحد الأدنى بالسنتيم (1792 ساعي / 9744 يومي)
+  dailyHours                  Int       @default(8) // المدة القانونية اليومية
+  weeklyHours                 Int       @default(44) // 44 عام / 48 فلاحي (2496÷52)
+  annualHours                 Int? // 2496 فلاحي — null للعام
+  nightStart                  String    @default("21:00") // حدود الليل تختلف بين المسارات (SPEC §12)
+  nightEnd                    String    @default("06:00")
+  monthlyDaysBasis            Int       @default(26) // أساس الأيام الشهري للفلاحي (قابل للضبط)
+  declarationProfile          String    @default("cnss_ebds") // none | cnss_ebds | dgi_xml — التصريح مرتبط بالمسار
+  version                     Int       @default(1) // تعديل المسار ينشئ إصدارًا جديدًا لا يعدّل القديم
+  isActive                    Boolean   @default(true)
+  effectiveFrom               DateTime
+  source                      String? // مرسوم/قانون — «وثّق مصدر كل قيمة» (SPEC §12)
+  needsAccountantConfirmation Boolean   @default(false) // الفلاحي: قاعدة الأساس تحتاج تأكيدًا واحدًا
+  confirmedBy                 String? // المحاسب الذي أكّد
+  confirmedAt                 DateTime?
+  notes                       String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  company           Company?                 @relation(fields: [companyId], references: [id])
+  contributionItems RegimeContributionItem[]
+  calcSteps         RegimeCalcStep[]
+  assignments       RegimeAssignment[]
+
+  @@unique([companyId, key, version])
+  @@index([companyId, isActive])
+  @@index([bundle, bundleStatus])
+}
+
+/// بند اشتراك واحد في مسار (SPEC §12: «قائمة بنود» — الحساب يقرأها ولا يفترض CNSS/AMO دائمًا)
+/// كل بند: الاسم، الجهة (أجير/مشغّل)، النسبة أو المبلغ، السقف، الأساس، الترتيب
+model RegimeContributionItem {
+  id           String  @id @default(cuid())
+  regimeId     String
+  key          String // cnss_employee_short | cnss_employee_long | amo_employee | employer_prest_short | employer_prest_long | employer_family | employer_amo | employer_tfp | <custom-slug>
+  side         String // employee | employer
+  label        String // اسم العرض في القسيمة
+  rateBp       Int // النسبة أساس 10000 (520 = 0.52%) — 0 مع amountCents = مبلغ ثابت
+  amountCents  Int? // مبلغ ثابت إن وُجد (بديل النسبة)
+  ceilingCents Int? // سقف الأساس (600000 لفرعي CNSS القصير/الطويل) — null = بلا سقف
+  basis        String  @default("cnss_base") // cnss_base (بعد المعفى) | sbi | gross
+  order        Int     @default(0)
+  isActive     Boolean @default(true)
+  source       String? // مصدر النسبة (تعميم CNSS...)
+
+  regime PayRegime @relation(fields: [regimeId], references: [id])
+
+  @@index([regimeId, order])
+}
+
+/// خطوة حساب قابلة للتركيب في مسار (SPEC §12: «قائمة خطوات لا دالة واحدة ثابتة»)
+/// kinds: employee_contributions | pro_deduction_tiered | ir_brackets | family_deduction | net_summary | employer_contributions
+/// paramsJson: معاملات الخطوة (fromPayRules=true يقرأ من pay_rules السارية، أو قيم صريحة لمسار مخصص)
+model RegimeCalcStep {
+  id         String  @id @default(cuid())
+  regimeId   String
+  kind       String
+  paramsJson String  @default("{}")
+  order      Int     @default(0)
+  isActive   Boolean @default(true)
+
+  regime PayRegime @relation(fields: [regimeId], references: [id])
+
+  @@index([regimeId, order])
+}
+
+/// إسناد عامل لمسار بتاريخ سريان (SPEC §12) — الانتقال بين مسارين يقسم الشهر (تحذير + مسار لاحق)
+model RegimeAssignment {
+  id            String    @id @default(cuid())
+  companyId     String
+  regimeId      String
+  workerUserId  String
+  effectiveFrom DateTime
+  endedAt       DateTime? // نهاية الإسناد عند الانتقال لمسار آخر
+  createdBy     String
+  createdAt     DateTime  @default(now())
+
+  company Company   @relation(fields: [companyId], references: [id])
+  regime  PayRegime @relation(fields: [regimeId], references: [id])
+
+  @@index([companyId, workerUserId])
+  @@index([regimeId])
+}
+
+/// سجل المواصفات الرسمية (SPEC §4.6): جهة، نوع، إصدار، حالة مسودة←اختبار←مفعّلة←مسحوبة
+/// DGI: xsdContent يرفعه المحاسب | CNSS: layoutJson تعريف تخطيط قابل للتحرير
+/// isSample=true → عينة موسومة SAMPLE-NOT-OFFICIAL لا تُفعَّل في الإنتاج أبدًا
+model DeclarationSpec {
+  id            String    @id @default(cuid())
+  companyId     String? // null = مستوى المنصة (عينات)
+  authority     String // cnss | dgi
+  kind          String // monthly | annual_9421 | corrective | neant
+  version       Int
+  effectiveFrom DateTime
+  sourceRef     String? // مرجع/رابط الوثيقة الرسمية
+  layoutJson    String? // CNSS (eBDS): ترتيب الحقول، العرض الثابت، الترميز، الرأس/الذيل، تنسيقات
+  xsdContent    String? // DGI: مخطط XSD الرسمي (نص)
+  mappingJson   String? // ربط حقول الأجور بعناصر الملف — إعداد قابل للتعديل لا كود
+  status        String    @default("draft") // draft | testing | active | retired
+  isSample      Boolean   @default(false)
+  uploadedBy    String
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  company      Company?      @relation(fields: [companyId], references: [id])
+  declarations Declaration[]
+
+  @@unique([companyId, authority, kind, version])
+  @@index([authority, kind, status])
+}
+
+/// تصريح واحد في دورة الاعتماد (SPEC §4.6): مسودة ← مولَّد ← مراجعة محاسب ← معتمد ← مُصدَّر ← مُودَع
+/// لا يخرج ملف رسمي قبل اعتماد المحاسب؛ التصحيح تصريح جديد مرتبط بالأصلي (correctsWith)
+model Declaration {
+  id             String    @id @default(cuid())
+  companyId      String
+  specId         String
+  periodId       String? // فترة الأجور (الشهري) — null للسنوي
+  periodKey      String // "2026-10" شهري | "2026" سنوي — مفتاح العرض والتفرد
+  authority      String // cnss | dgi (نسخة من المواصفة للتثبيت)
+  kind           String // monthly | annual_9421 | corrective | neant
+  status         String    @default("draft") // draft | generated | accountant_review | approved | rejected | exported | filed
+  summaryJson    String? // ملخص الأرقام للتدقيق (إجمالي كل اشتراك + مقارنة الفترة السابقة)
+  validationJson String? // أخطاء/تحذيرات التحقق بالمخطط (العنصر، السبب)
+  reviewNote     String? // ملاحظة المحاسب (اعتماد أو رفض)
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  approvedBy     String?
+  approvedAt     DateTime?
+  exportedBy     String?
+  exportedAt     DateTime?
+  filedAt        DateTime?
+  filedRef       String? // رقم مرجع الإيداع اليدوي
+  correctsWith   String? // id التصريح الأصلي (التصحيحي مرتبط لا معدِّل)
+  createdBy      String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company  Company              @relation(fields: [companyId], references: [id])
+  spec     DeclarationSpec      @relation(fields: [specId], references: [id])
+  files    DeclarationFile[]
+  receipts DeclarationReceipt[]
+
+  @@index([companyId, authority, kind, periodKey])
+  @@index([companyId, status])
+}
+
+/// الملف الرسمي المُصدَّر (وثيقة قانونية — SPEC §4.6): نسخة ثابتة + hash + إصدار المواصفة
+model DeclarationFile {
+  id            String   @id @default(cuid())
+  declarationId String
+  content       String // محتوى الملف (eBDS نص / XML) — نسخة ثابتة لا تتغير
+  sha256        String // تجزئة SHA-256 للوثيقة
+  specVersion   Int
+  format        String // ebds | xml
+  sizeBytes     Int
+  exportedBy    String
+  createdAt     DateTime @default(now())
+
+  declaration Declaration @relation(fields: [declarationId], references: [id])
+
+  @@index([declarationId])
+}
+
+/// إشعار الاستلام بعد الإيداع اليدوي (SPEC §4.6): تاريخ + مرجع + PDF مرفوع
+model DeclarationReceipt {
+  id            String   @id @default(cuid())
+  declarationId String
+  filedAt       DateTime
+  filedRef      String?
+  receiptB64    String? // PDF إشعار الاستلام (base64)
+  uploadedBy    String
+  createdAt     DateTime @default(now())
+
+  declaration Declaration @relation(fields: [declarationId], references: [id])
+
+  @@index([declarationId])
 }
