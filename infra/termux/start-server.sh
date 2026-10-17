@@ -28,4 +28,11 @@ if [ ! -d .next ]; then
   npm run build
 fi
 
-exec npm start -- -H 0.0.0.0 -p 3000
+# 4ب) المحرّكات الأصلية لـ sharp في standalone (خطوة إلزامية بعد كل بناء — راجع §9.2)
+bash infra/termux/fix-sharp-standalone.sh
+
+# 5) التشغيل — الـstandalone server يتجاهل ‎-p/-H‎ ويقرأ PORT/HOSTNAME من البيئة (درس §9)
+export NODE_ENV=production
+export PORT="${PORT:-3000}"
+export HOSTNAME="${HOSTNAME:-0.0.0.0}"
+exec npm start
