@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
       "./node_modules/pdfkit/**",
       "./node_modules/yoga-layout/**",
       "./node_modules/sharp/**",
+      "./node_modules/@img/**",
       "./public/fonts/**",
     ],
   },

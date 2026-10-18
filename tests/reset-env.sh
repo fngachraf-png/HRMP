@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # FWMS — إعادة بيئة الاختبار نظيفة (سابقة المراحل — درس 6ج: الاختبارات ذات الحالة على قاعدة نظيفة)
 # يحل المسار الفعلي لقاعدة البيانات (متغير الصدفة يتفوق على .env — درس KNOWLEDGE_BASE §9)
+# ⚠️ منفذ آمن 3100 حصرًا (ترقيع أمني 2026-10-18): المنفذ 3000 = منفذ الإنتاج على الهاتف —
+# تشغيل dev عليه يعرّض بيانات اختبار عبر نفق الإنتاج أو يصارع الخادم الإنتاجي على المنفذ.
+# بيئة التطوير السحابية: إن فشل الإقلاع بـ bun (خارجيات Turbopack) مرّر RUNTIME=node.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+PORT="${TEST_PORT:-3100}"
+RUNTIME="${TEST_RUNTIME:-bun --bun}"  # node = بيئة سحابية (درس KNOWLEDGE_BASE §9 — 2026-10-18)
 
 DB_PATH="${DATABASE_URL:-file:./db/custom.db}"
 DB_PATH="${DB_PATH#file:}"
@@ -19,19 +25,19 @@ echo "✓ بذور كاملة"
 
 pkill -f "next dev" 2>/dev/null || true
 sleep 2
-setsid -f bun --bun next dev -p 3000 > dev.log 2>&1 < /dev/null
+setsid -f $RUNTIME next dev -p "$PORT" > dev.log 2>&1 < /dev/null
 
 for i in 1 2 3; do
   sleep 13
-  R=$(curl -s -m 10 http://localhost:3000/api/health 2>/dev/null || true)
+  R=$(curl -s -m 10 "http://localhost:$PORT/api/health" 2>/dev/null || true)
   if echo "$R" | rg -q '"status":"ok"'; then
-    echo "✓ الخادم جاهز: $R"
+    echo "✓ الخادم جاهز على $PORT: $R"
     exit 0
   fi
   echo "  محاولة $i — إعادة تشغيل (درس بداية Prisma الباردة)"
   pkill -f "next dev" 2>/dev/null || true
   sleep 2
-  setsid -f bun --bun next dev -p 3000 > dev.log 2>&1 < /dev/null
+  setsid -f $RUNTIME next dev -p "$PORT" > dev.log 2>&1 < /dev/null
 done
 echo "✗ الخادم لم يجهز"
 exit 1
