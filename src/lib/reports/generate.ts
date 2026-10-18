@@ -347,6 +347,41 @@ async function allocateRefNumber(companyId: string): Promise<string> {
  * فيكون process.execPath = bun. مسار العامل يوجد في dev وstandalone معًا
  * (outputFileTracingIncludes يضم src/lib/reports/**).
  */
+
+/** وقت تشغيل العامل الابن — العامل TypeScript صُمِّم لـ bun (رأس render-worker.ts).
+ * الخادم المشغَّل بـ bun (الهاتف الإنتاجي) → execPath نفسه بلا بحث.
+ * الخادم المشغَّل بـ node (بيئة التطوير السحابية) → bun من PATH إن وُجد
+ * (بلا خطوة البحث هذه يُشغَّل العامل بـ node فيفشل: الحزم الخارجية تُحل ببنية
+ * مختلفة عن bun — ثبت في الجلسة السحابية 2026-10-18: api-phase8 73/76 ← 76/76).
+ * لا bun في PATH (مثل Vercel serverless) → execPath كما كان (بند Vercel المفتوح). */
+let cachedWorkerRuntime: string | undefined;
+
+async function resolveWorkerRuntime(): Promise<string> {
+  if (cachedWorkerRuntime) return cachedWorkerRuntime;
+  if (/(^|\/)bun(\.exe)?$/i.test(process.execPath)) {
+    cachedWorkerRuntime = process.execPath;
+    return cachedWorkerRuntime;
+  }
+  try {
+    const { execFile } = await import("node:child_process");
+    const bin = process.platform === "win32" ? "where" : "which";
+    const out = await new Promise<string>((resolve, reject) => {
+      execFile(bin, ["bun"], { encoding: "utf8" }, (err: Error | null, stdout: string) =>
+        err ? reject(err) : resolve(stdout)
+      );
+    });
+    const bunPath = out.split("\n")[0]?.trim();
+    if (bunPath) {
+      cachedWorkerRuntime = bunPath;
+      return bunPath;
+    }
+  } catch {
+    /* لا bun في PATH — سقوط إلى execPath */
+  }
+  cachedWorkerRuntime = process.execPath;
+  return cachedWorkerRuntime;
+}
+
 async function renderViaWorker(
   format: string,
   data: AnyReportData,
@@ -374,8 +409,9 @@ async function renderViaWorker(
   await writeFile(jobPath, JSON.stringify({ format, data, language, options, meta }), "utf8");
 
   try {
+    const workerRuntime = await resolveWorkerRuntime();
     await new Promise<void>((resolve, reject) => {
-      const child = spawn(process.execPath, [workerPath, jobPath, outPath], {
+      const child = spawn(workerRuntime, [workerPath, jobPath, outPath], {
         cwd: process.cwd(),
         stdio: ["ignore", "pipe", "pipe"],
         env: process.env,
