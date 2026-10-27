@@ -2,7 +2,9 @@
 // ملكية: المساعد الثاني (كباقي البذور) — نُفِّذت هنا لسابقة المراحل مع طلب مراجعة صريح.
 // القواعد:
 //   - قوالب المنصة (companyId=null): general (مكتمل)، agricultural (مكتمل + تأكيد محاسب)،
-//     public_civil_service وpublic_entreprise (هيكل فارغ غير مكتمل يمنع الاعتماد — SPEC §12)
+//     public_civil_service (مُعزَّز بالمرجع الرسمي — يبقى غير مكتمل حتى إدخال محاسب الجهة
+//     للحد الأدنى الخام وسلالم الأجور)، public_entreprise (مكتمل بالحد الأدنى الرسمي
+//     SMIG + RCAR/AMO بتأكيد محاسب — تحديث جولة 2026-10-28 استنادًا إلى الجريدة الرسمية)
 //   - البنود والخطوات من SPEC §11.6/§12 حرفيًا مع مصدر كل قيمة
 //   - عينات مواصفات التصريح موسومة SAMPLE-NOT-OFFICIAL (لا تُفعَّل في الإنتاج أبدًا — SPEC §4.6)
 //   - idempotent (upsert) — تشغيل مزدوج بلا تكرار
@@ -32,6 +34,28 @@ const CNSS_ITEMS: ItemSeed[] = [
   { key: "employer_family", side: "employer", label: "CNSS employeur — allocations familiales", rateBp: 64000, ceilingCents: null, basis: "cnss_base", order: 72, source: "تعميم CNSS — 6.40% (SPEC §11.6)" },
   { key: "employer_amo", side: "employer", label: "AMO employeur", rateBp: 41100, ceilingCents: null, basis: "cnss_base", order: 73, source: "تعميم AMO — 4.11% (SPEC §11.6)" },
   { key: "employer_tfp", side: "employer", label: "TFP — Taxe de formation professionnelle", rateBp: 16000, ceilingCents: null, basis: "cnss_base", order: 74, source: "TFP — 1.60% (SPEC §11.6)" },
+];
+
+// ── القطاع العام — الوظيفة العمومية (CMR + AMO عمومية) ──────────────
+// المصدر: القانون 011.71 (المعاشات المدنية) كما عُدّل بالقانون 71.14 (إصلاح 2016):
+// اشتراك إجمالي 28% = 14% الموظف + 14% الدولة — على كامل الأجر الخاضع بلا سقف.
+// AMO: القانون 65.00 — 5% إجمالًا (2.5% موظف + 2.5% مشغل) — CNOPS حتى 31/01/2027 ثم CNSS (القانون 54.23).
+const CIVIL_SERVICE_ITEMS: ItemSeed[] = [
+  { key: "cmr_employee", side: "employee", label: "CMR — المعاشات المدنية (حصة الموظف)", rateBp: 140000, ceilingCents: null, basis: "gross", order: 40, source: "القانون 011.71 كما عُدّل بالقانون 71.14 (إصلاح 2016) — 14% حصة الموظف" },
+  { key: "amo_public_employee", side: "employee", label: "AMO قطاع عام (حصة الموظف)", rateBp: 25000, ceilingCents: null, basis: "gross", order: 41, source: "القانون 65.00 — 2.5% حصة الموظف (CNOPS حتى 31/01/2027 ثم CNSS بمقتضى القانون 54.23)" },
+  { key: "cmr_employer", side: "employer", label: "CMR — المعاشات المدنية (حصة الدولة)", rateBp: 140000, ceilingCents: null, basis: "gross", order: 70, source: "القانون 011.71 — 14% حصة الدولة (المشغل)" },
+  { key: "amo_public_employer", side: "employer", label: "AMO قطاع عام (حصة المشغل)", rateBp: 25000, ceilingCents: null, basis: "gross", order: 71, source: "القانون 65.00 — 2.5% حصة المشغل" },
+];
+
+// ── المؤسسات العمومية والشركات العامة (RCAR + AMO عمومية) ──────────
+// المصدر: الظهير 1.77.216 (RCAR) — اشتراك إجمالي 18% = 6% الأجير + 12% المؤسسة
+// بسقف الأجر المعتمد 2026: 268,800 د.م./سنة = 22,400 د.م./شهر (يُعاد تقييمه سنويًا).
+// AMO: نفس مسار القطاع العام (CNOPS ← CNSS فبراير 2027). الحد الأدنى: SMIG 17.92 د.م./ساعة (مرسوم 2.25.983).
+const PUBLIC_ENTREPRISE_ITEMS: ItemSeed[] = [
+  { key: "rcar_employee", side: "employee", label: "RCAR — النظام الجماعي للتقاعد (حصة الأجير)", rateBp: 60000, ceilingCents: 2240000, basis: "gross", order: 40, source: "الظهير 1.77.216 — 6% حصة الأجير؛ سقف الاشتراك 22,400 د.م./شهر لسنة 2026 (rcar.ma — يُعاد تقييمه سنويًا)" },
+  { key: "amo_public_employee", side: "employee", label: "AMO قطاع عام (حصة الأجير)", rateBp: 25000, ceilingCents: null, basis: "gross", order: 41, source: "القانون 65.00 — 2.5% حصة الأجير (CNOPS حتى 31/01/2027 ثم CNSS بمقتضى القانون 54.23)" },
+  { key: "rcar_employer", side: "employer", label: "RCAR — النظام الجماعي للتقاعد (حصة المؤسسة)", rateBp: 120000, ceilingCents: 2240000, basis: "gross", order: 70, source: "الظهير 1.77.216 — 12% حصة المؤسسة؛ نفس سقف 22,400 د.م./شهر لسنة 2026" },
+  { key: "amo_public_employer", side: "employer", label: "AMO قطاع عام (حصة المشغل)", rateBp: 25000, ceilingCents: null, basis: "gross", order: 71, source: "القانون 65.00 — 2.5% حصة المشغل" },
 ];
 
 const FROM_PAY_RULES = JSON.stringify({ fromPayRules: true });
@@ -108,45 +132,50 @@ const REGIMES: RegimeSeed[] = [
     steps: STANDARD_STEPS,
   },
   {
-    // حزم عمومية: هيكل فارغ قابل للتعبئة — لا تُخترع قواعدها (SPEC §12)
+    // حزمة الوظيفة العمومية (SPEC §12): مُعزَّزة بالمرجع الرسمي (مرسوم 2.05.916 + القانون 011.71/71.14 + القانون 65.00)
+    // — تبقى incomplete لغياب الحد الأدنى الخام المعتمد (النظامي 4,000 د.م. صافي لا يُحوَّل دون تأكيد محاسب الجهة)
     key: "public_civil_service",
-    name: "القطاع العام — الوظيفة العمومية (هيكل فارغ)",
+    name: "القطاع العام — الوظيفة العمومية",
     bundle: "public_civil_service",
     bundleStatus: "incomplete",
     minWageType: "hourly",
     minWageCents: 0,
-    dailyHours: 8,
-    weeklyHours: 40,
-    annualHours: null,
+    dailyHours: 7.5, // الإثنين–الخميس 7.5 س (الجمعة 6.5 س) — مرسوم 2.05.916 (ج.ر 5336)
+    weeklyHours: 36.5, // (7.5 × 4) + 6.5 = 36.5 س/أسبوع — مرسوم 2.05.916 + بلاغ 9 نونبر 2018
+    annualHours: 1898, // 36.5 × 52 = 1,898 س/سنة
     nightStart: "21:00",
     nightEnd: "06:00",
     monthlyDaysBasis: 26,
     declarationProfile: "none", // قد لا تُصرَّح في Damancom أصلاً (SPEC §12)
     needsAccountantConfirmation: true,
-    source: null,
-    notes: "تُدخَل الأنظمة (تقاعد/تأمين صحي/سلالم الأجور) من الجهة المالكة أو محاسبها بتواريخ سريان ومصادر — يمنع النظام الاعتماد حتى اكتمالها ويعرض ما ينقص",
-    items: [],
-    steps: [],
+    source: "مرسوم 2.05.916 (ج.ر 5336 — 21/07/2005) للمدة والتوقيت · القانون 011.71 كما عُدّل بالقانون 71.14 (CMR 14%+14%) · القانون 65.00 (AMO 2.5%+2.5%) · مرسوم 2.73.722 (سلالم الأجور) · بلاغ رئاسة الحكومة 08/2024 (حد أدنى 4,000 د.م. صافي)",
+    notes:
+      "بنود CMR وAMO مُثبّتة من النصوص الرسمية — يُدخل محاسب الجهة الحد الأدنى الخام المعتمد وسلالم الأجور والتعويضات الخاصة (السكن/التأطير/الأخطار/المنطقة) بتواريخ سريان، ثم يُعتمد المسار. نظام الأجر: المرتب السنوي = الرقم الاستدلالي × قيمة النقطة (98.85 د.م. للشريحة 1–100، و79.62 للـ101–150، و50.92 لما فوق 150 — سارية 2026) + التعويضات النظامية. التوقيت الإداري: الإثنين–الجمعة 8:30–16:30 باستراحة 30 دقيقة وساعة صلاة الجمعة (رمضان: 9:00–15:00). المدة الشهرية المرجعية 158.17 ساعة/شهر (الأجر الساعي للحد الأدنى الصافي 4,000 د.م. = 25.29 د.م./ساعة). التقاعد: CMR سن 63 (65 لبعض الفئات) ومعاش 2%/سنة بعد 2017 على متوسط آخر 8 سنوات — سن التقاعد المبكر بعد 24 سنة خدمة (رجال) و18 (نساء).",
+    items: CIVIL_SERVICE_ITEMS,
+    steps: STANDARD_STEPS,
   },
   {
+    // حزمة المؤسسات العمومية والشركات العامة (SPEC §12): مُعزَّزة بالمرجع الرسمي
+    // (مدونة الشغل م.184 + الظهير 1.77.216 RCAR + القانون 65.00 AMO + مرسوم 2.25.983 SMIG)
     key: "public_entreprise",
-    name: "المؤسسات العمومية والشركات العامة (هيكل فارغ)",
+    name: "المؤسسات العمومية والشركات العامة",
     bundle: "public_entreprise",
-    bundleStatus: "incomplete",
+    bundleStatus: "complete",
     minWageType: "hourly",
-    minWageCents: 0,
+    minWageCents: 1792, // SMIG 17.92 د.م./ساعة من 1 يناير 2026 — مرسوم 2.25.983 (ج.ر 7469): لا يمكن لأي شبكة داخلية أن تنزل عنه
     dailyHours: 8,
-    weeklyHours: 44,
-    annualHours: null,
+    weeklyHours: 44, // مدونة الشغل م.184: 44 س/أسبوع أو 2288 س/سنة (سقف يومي 10 س)
+    annualHours: 2288, // 44 × 52 = 2,288 س/سنة — م.184
     nightStart: "21:00",
     nightEnd: "06:00",
     monthlyDaysBasis: 26,
-    declarationProfile: "none",
-    needsAccountantConfirmation: true,
-    source: null,
-    notes: "قد تجمع عقوداً خاصة وأنظمة أساسية داخلية واتفاقيات — تُدخَل من الجهة المالكة (SPEC §12)",
-    items: [],
-    steps: [],
+    declarationProfile: "none", // التصريح مرتبط بالمسار — يحدد المحاسب مواصفته (SPEC §4.6/§12)
+    needsAccountantConfirmation: true, // سقف RCAR يُعاد تقييمه سنويًا + الشبكات الداخلية خاصة بكل مؤسسة
+    source: "مدونة الشغل 65.99 م.184 (44 س/أسبوع أو 2288 س/سنة، سقف 10 س/يوم) · الظهير 1.77.216 (RCAR 6%+12% بسقف 22,400 د.م./شهر 2026) · القانون 65.00 (AMO 2.5%+2.5%) · مرسوم 2.25.983 (ج.ر 7469 — SMIG 17.92 د.م./ساعة من 01/01/2026)",
+    notes:
+      "قاعدة عامة قانونية للمؤسسات الخاضعة لمدونة الشغل (OCP/ONEE/ONCF/RAM/بريد المغرب/الوكالات المستقلة): RCAR إجباري للأعوان غير المرسمين (6% أجير + 12% مؤسسة) بسقف شهري 22,400 د.م. لسنة 2026 يُعاد تقييمه سنويًا، وAMO عبر CNOPS حتى 31/01/2027 ثم CNSS (القانون 54.23). الساعات الإضافية بنسب مدونة الشغل م.196-201 (+25% نهارًا، +50% ليلًا أو نهار الراحة، +100% ليل الراحة/الأعياد). المدة الشهرية المرجعية 191 ساعة. الحد الأدنى النظامي SMIG (3,422.72 د.م./شهر خام)، والشبكات الداخلية المصادق عليها أعلى منه (حد أدنى داخلي شائع 4,500–5,200 د.م.) — تُدخل من المؤسسة بنظامها الخاص بتواريخ سريان. يُؤكد المحاسب السقف السنوي والشبكة الداخلية قبل أول اعتماد.",
+    items: PUBLIC_ENTREPRISE_ITEMS,
+    steps: STANDARD_STEPS,
   },
 ];
 

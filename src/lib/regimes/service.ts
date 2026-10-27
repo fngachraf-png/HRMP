@@ -89,8 +89,8 @@ export const createRegimeSchema = z.object({
     .object({
       minWageType: z.enum(["hourly", "daily"]).optional(),
       minWageCents: z.number().int().positive().optional(),
-      dailyHours: z.number().int().min(1).max(24).optional(),
-      weeklyHours: z.number().int().min(1).max(168).optional(),
+      dailyHours: z.number().min(1).max(24).optional(), // Float مسموح (7.5 وظيفة عمومية — Float migration 2026-10-28)
+      weeklyHours: z.number().min(1).max(168).optional(), // Float مسموح (36.5 وظيفة عمومية — Float migration 2026-10-28)
       annualHours: z.number().int().positive().nullable().optional(),
       nightStart: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
       nightEnd: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
@@ -271,8 +271,8 @@ export const updateRegimeSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   minWageType: z.enum(["hourly", "daily"]).optional(),
   minWageCents: z.number().int().positive().optional(),
-  dailyHours: z.number().int().min(1).max(24).optional(),
-  weeklyHours: z.number().int().min(1).max(168).optional(),
+  dailyHours: z.number().min(1).max(24).optional(), // Float مسموح (7.5 وظيفة عمومية)
+  weeklyHours: z.number().min(1).max(168).optional(), // Float مسموح (36.5 وظيفة عمومية)
   annualHours: z.number().int().positive().nullable().optional(),
   nightStart: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
   nightEnd: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),

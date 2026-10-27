@@ -892,8 +892,8 @@ model PayRegime {
   bundleStatus                String    @default("incomplete") // complete | incomplete — غير المكتملة تمنع اعتماد الكشوف
   minWageType                 String    @default("hourly") // hourly (SMIG) | daily (SMAG)
   minWageCents                Int // الحد الأدنى بالسنتيم (1792 ساعي / 9744 يومي)
-  dailyHours                  Int       @default(8) // المدة القانونية اليومية
-  weeklyHours                 Int       @default(44) // 44 عام / 48 فلاحي (2496÷52)
+  dailyHours                  Float    @default(8) // المدة القانونية اليومية (Float: 7.5 للوظيفة العمومية — مرسوم 2.05.916)
+  weeklyHours                 Float    @default(44) // 44 عام / 48 فلاحي / 36.5 وظيفة عمومية (Float — مرسوم 2.05.916)
   annualHours                 Int? // 2496 فلاحي — null للعام
   nightStart                  String    @default("21:00") // حدود الليل تختلف بين المسارات (SPEC §12)
   nightEnd                    String    @default("06:00")
