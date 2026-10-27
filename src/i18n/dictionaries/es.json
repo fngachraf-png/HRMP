@@ -2193,5 +2193,24 @@
     "seekers_verify": "Autenticación de candidatos",
     "notifications_push": "Notificaciones de dispositivos (móviles/escritorio/Android)",
     "self_view": "Datos propios del usuario"
+  },
+  "assistant": {
+    "launcher": "Asistente HRMP — tu guía dentro de la plataforma",
+    "title": "Asistente HRMP",
+    "subtitle": "Tu guía para el uso profesional de la plataforma",
+    "disclaimer": "Responde solo sobre la plataforma HRMP, sus funciones y su uso.",
+    "placeholder": "Pregunta sobre cualquier función…",
+    "send": "Enviar",
+    "close": "Cerrar",
+    "reset": "Nueva conversación",
+    "thinking": "Escribiendo…",
+    "s1": "¿Cómo registro mi asistencia?",
+    "s2": "¿Cómo se aprueban los salarios?",
+    "s3": "¿Qué son los regímenes salariales?",
+    "errors": {
+      "rateLimited": "Demasiadas solicitudes — espera un momento e inténtalo de nuevo.",
+      "unavailable": "El asistente no está disponible temporalmente — inténtalo de nuevo en breve.",
+      "generic": "No se pudo obtener la respuesta — reformula tu pregunta e inténtalo de nuevo."
+    }
   }
 }

@@ -2193,5 +2193,24 @@
     "seekers_verify": "Authentification des candidats",
     "notifications_push": "Notifications des appareils (mobiles/ordinateurs/Android)",
     "self_view": "Données propres de l'utilisateur"
+  },
+  "assistant": {
+    "launcher": "Assistant HRMP — votre guide dans la plateforme",
+    "title": "Assistant HRMP",
+    "subtitle": "Votre guide pour un usage professionnel de la plateforme",
+    "disclaimer": "Il répond uniquement sur la plateforme HRMP, ses fonctions et son utilisation.",
+    "placeholder": "Posez une question sur une fonctionnalité…",
+    "send": "Envoyer",
+    "close": "Fermer",
+    "reset": "Nouvelle conversation",
+    "thinking": "En cours d'écriture…",
+    "s1": "Comment enregistrer ma présence ?",
+    "s2": "Comment les salaires sont-ils approuvés ?",
+    "s3": "Que sont les régimes de paie ?",
+    "errors": {
+      "rateLimited": "Trop de demandes — patientez un instant puis réessayez.",
+      "unavailable": "L'assistant est momentanément indisponible — réessayez bientôt.",
+      "generic": "Impossible d'obtenir la réponse — reformulez votre question et réessayez."
+    }
   }
 }

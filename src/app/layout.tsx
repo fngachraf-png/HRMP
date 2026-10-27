@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { I18nProvider } from "@/i18n/provider";
 import { ServiceWorkerRegister } from "@/components/hrmp/sw-register";
 import { NativeShell } from "@/components/hrmp/native-shell";
+import { AssistantWidget } from "@/components/hrmp/assistant-widget";
 import { readLocaleCookie, localeDirection, resolveLocale } from "@/i18n/config";
 import { getDictionary, tServer } from "@/i18n/get-dictionary";
 
@@ -87,6 +88,10 @@ export default async function RootLayout({
             {children}
           </I18nProvider>
           <Toaster />
+          {/* «مساعد HRMP» — الشات الموجّه في كل صفحات المنصة (جولة 2026-10-28):
+              زر عائم باللوغو الرسمي؛ الرد بلغة المستخدم، حصرًا في خصائص المنصة،
+              بلا روابط وبلا هلوسة — عقد يفرضه العامل والخادم (src/app/api/assistant). */}
+          <AssistantWidget />
           <ServiceWorkerRegister />
           <NativeShell />
         </ThemeProvider>

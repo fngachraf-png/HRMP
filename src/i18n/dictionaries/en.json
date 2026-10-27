@@ -2193,5 +2193,24 @@
     "seekers_verify": "Job seeker identity verification",
     "notifications_push": "Device notifications (phones/desktops/Android)",
     "self_view": "Own user data"
+  },
+  "assistant": {
+    "launcher": "HRMP Assistant — your guide inside the platform",
+    "title": "HRMP Assistant",
+    "subtitle": "Your guide to professional use of the platform",
+    "disclaimer": "It answers only about the HRMP platform, its features, and how to use them.",
+    "placeholder": "Ask about any platform feature…",
+    "send": "Send",
+    "close": "Close",
+    "reset": "New conversation",
+    "thinking": "Typing…",
+    "s1": "How do I check in for attendance?",
+    "s2": "How does payroll approval work?",
+    "s3": "What are the pay regimes?",
+    "errors": {
+      "rateLimited": "Too many requests — wait a moment and try again.",
+      "unavailable": "The assistant is temporarily unavailable — try again shortly.",
+      "generic": "Could not get a reply — rephrase your question and try again."
+    }
   }
 }
