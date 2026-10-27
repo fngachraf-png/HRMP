@@ -57,8 +57,17 @@ service cron start >/dev/null 2>&1 || true
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock || echo "⚠ termux-wake-lock غير متوفر (شغّل داخل Termux مباشرة)"
 
 # 2) مزامنة الكود (فحص السعة 2026-10-19: ترتيب الخطوات مُصحَّح — انظر 3)
+#    ── تراجع آمن (2026-10-27 — توجيه origin إلى fngachraf-png/HRMP المؤقت) ──
+#    السحب صار من الشبكة بعد تعطّل الحساب الأساسي (tarikchouika موقوف 403)،
+#    فصار الإقلاع معتمدًا على توفر GitHub — وهذا لا يجوز: عطل خارجي أو انقطاع
+#    شبكة يجب ألّا يمنع منصة من التشغيل. الفشل هنا يعني «نبقى على ما نحن عليه»
+#    لا «لا نُقلع». (درس مشابه موثّق: البوابة كانت ترد 503 لتعطّل الأصل.)
 OLD_HEAD="$(git rev-parse HEAD 2>/dev/null || echo none)"
-git pull --ff-only origin main
+if git pull --ff-only origin main; then
+  log "✔ سحب المستودع ناجح ($(git rev-parse --short HEAD))"
+else
+  log "⚠ تعذّر السحب (مستودع/شبكة) — نُكمل بالرأس المحلي $(git rev-parse --short HEAD 2>/dev/null || echo none) · الخدمة أهم من التحديث"
+fi
 NEW_HEAD="$(git rev-parse HEAD 2>/dev/null || echo none)"
 
 # 2ب) إن تغيّر هذا السكربت نفسه بالسحب: أعد تشغيل النسخة الجديدة من أوله.
