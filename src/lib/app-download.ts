@@ -7,9 +7,19 @@
 
 /** الرابط الدائم: يوجّه دائمًا لأصل «أحدث إصدار» — اسم ثابت لا يتغير
  *  (إعادة التسمية 2026-10-24: المستودع tarikchouika/HRMP والأصل HRMP.apk —
- *  GitHub يعيد توجيه روابط المستودع القديم تلقائيًا، والأصل الجديد ثابت من الإصدار 0.13.0) */
+ *  GitHub يعيد توجيه روابط المستودع القديم تلقائيًا، والأصل الجديد ثابت من الإصدار 0.13.0)
+ *
+ *  ⚠️ تغيير موثّق 2026-10-27 (بلاغ المالك: الرابط الدائم لا يعمل): حساب
+ *  `tarikchouika` موقوف ⇒ كل روابطه `404`. صار الرابط الدائم من المستودع
+ *  الاحتياطي `fngachraf-png/HRMP` (أُنشئ فيه release v0.14.0 بنفس الأصل
+ *  `HRMP.apk` 3,188,019 بايت). صيغة `releases/latest/download` مقصودة: تبقى
+ *  تتبع أحدث إصدار بلا تعديل عند كل إصدار (درس 2026-10-19). */
 export const APP_DOWNLOAD_URL =
-  "https://github.com/tarikchouika/HRMP/releases/latest/download/HRMP.apk";
+  "https://github.com/fngachraf-png/HRMP/releases/latest/download/HRMP.apk";
+
+/** نسخة احتياطية على نطاق المنصة نفسها — تعمل ولو سقط GitHub أو أُغلق المستودع
+ *  (الأصل موضع محليًا في `public/HRMP.apk` ويُقدَّم من الخادم المرجعي عبر كل البوابات) */
+export const APP_DOWNLOAD_MIRROR_URL = "https://hrmp.pages.dev/HRMP.apk";
 
 /** صفحة الإصدارات (لمن يريد الاطلاع على سجل التغييرات قبل التحميل) */
-export const APP_RELEASES_URL = "https://github.com/tarikchouika/HRMP/releases/latest";
+export const APP_RELEASES_URL = "https://github.com/fngachraf-png/HRMP/releases";

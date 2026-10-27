@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HrmpLogo } from "@/components/hrmp/logo";
 import { useI18n } from "@/i18n/provider";
-import { APP_DOWNLOAD_URL, APP_RELEASES_URL } from "@/lib/app-download";
+import { APP_DOWNLOAD_URL, APP_DOWNLOAD_MIRROR_URL, APP_RELEASES_URL } from "@/lib/app-download";
 import { APP_VERSION } from "@/lib/version";
 
 type Step = { icon: LucideIcon; titleKey: string; bodyKey: string };
@@ -88,6 +88,19 @@ export function AppDownload() {
           <p className="text-[11px] leading-5 text-white/70" dir="ltr">
             HRMP.apk — {t("appPage.permanentNote")}
           </p>
+          {/* نسخة احتياطية مزدوجة (بلاغ المالك 2026-10-27): تعمل ولو سقط GitHub */}
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-white/80">
+            <span>{t("appPage.mirrorLink")}</span>
+            <a
+              href={APP_DOWNLOAD_MIRROR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              dir="ltr"
+              className="font-medium text-white underline underline-offset-4 hover:text-white/90"
+            >
+              hrmp.pages.dev/HRMP.apk
+            </a>
+          </div>
         </CardContent>
       </Card>
 

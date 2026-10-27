@@ -1,3 +1,37 @@
+## [2026-10-27 — جولة «إعادة الإقلاع + رابط APK الدائم»] — المساعد (بلاغ المالك: «موقع المنصة و تطبيق المنصة hrmp.pages.dev (fwms سابقا) لا يعملان، تفحص السبب و أصلحه بشكل احترافي»)
+
+### التشخيص (سببان مقيسان — قبل أي علاج)
+
+| الفحص | الدليل |
+|---|---|
+| البوابات الخمس | كلها `503` «FWMS: خادم الهاتف غير متاح حالياً» · محليًا `curl (7) Failed to connect to 127.0.0.1:3000` |
+| العمليات | لا `next`/`node`/`cloudflared` في `ps` · `uptime` ⇒ **`up 2 min`** (جهاز أُعيد تشغيله للتو) |
+| سجل النفق | `2026-10-26T23:18:47Z INF cloudflared has been updated version=2026.10.4` ← `Restarting service managed by SysV...` ← **`ERR Unable to restart server automatically error="chdir /root/F-W-M-S: no such file or directory"`** ← `Tunnel server stopped` |
+| البناء | `HEAD=703645f` مقابل `.next/BUILT_COMMIT=648d498` (بناء قديم — وتظهر في السجل أخطاء `Failed to find Server Action`) |
+| رابط APK | `tarikchouika/HRMP/releases/latest/download/HRMP.apk` ⇒ **404** (الحساب موقوف) · المطلوب من `fngachraf-png` ⇒ **404** لأن الريبو `private` |
+
+### العلاج والتحقق
+
+1. **إعادة الإقلاع:** `start-server.sh` مع تجاوز `git pull` المعطوب (`GIT_CONFIG_COUNT=1 … url./root/HRMP.insteadOf`) — بناء كامل (Next 16.1.3 · 112 صفحة) + `prisma migrate deploy` (**17 هجرة، لا معلّق**) + sharp + `PID 25340` + النفق `--protocol http2` (precheck `hard_fail=false`، 4 اتصالات lis01/mrs07/mad05).
+2. **حارس دائم (جديد — `hrmp-guard.sh` + crontab):** `@reboot … boot` (إقلاع بعد التشغيل) و`*/5 … check` (3 فحوصات فاشلة ⇒ إعادة إقلاع). قفل `flock` بـ`exec 9>` **مع إغلاق الوصفة للأبناء `9>&-`** (عطل ثانٍ رصد: `npm start` ورث القفل فبقي مقفولًا ⇒ الحارس يخرج صامتًا). **مُتحقق بالبرهان لا بالافتراض:** قتل الخادم ← نفّذ أمر `@reboot` نفسه ← `عاد بعد 65ث` · وسيناريو الحارس: `فحص #1..#3` ← `❌ إعادة الإقلاع` ← الصحة عادت ← `state` يعود صفرًا عند الفحص الصحي.
+3. **البوابة المفقودة:** `lint 0/0` ✅ · `tsc 120/120` ✅ · **`snapshot` ⛔ `infra/vercel/preview.db` مفقودة** (سابق: استُبعد `*.db` من `.git/info/exclude` بسياسة نسخة GitHub 2026-10-25 فأُزيل من الشجرة) ⇒ أُولِّدت بـ`scripts/regen-preview-db.sh` (892,928 بايت · 7 مستخدمين · 32 قاعدة أجر · `bcrypt=60`) ⇒ **البوابة خضراء**.
+4. **روابط APK المزدوجة (بأمر المالك):** (أ) `fngachraf-png/HRMP` خاص ⇒ أصول الإصدارات `404` بلا مصادقة حتى بالتوكن ⇒ أُعيدت `visibility` إلى `public` **بعد تدقيق جهوزية العلانية** (`.env` غير متعقبة · لا `ghp_`/`cfat_`/`sk-` في `HEAD` · لا keystore · 506 ملفًا)؛ (ب) `APP_DOWNLOAD_URL` = `fngachraf-png/HRMP/releases/latest/download/HRMP.apk` · `APP_RELEASES_URL` = صفحة إصداراته · `APP_DOWNLOAD_MIRROR_URL` = `https://hrmp.pages.dev/HRMP.apk` من `public/HRMP.apk` معروضة في `/app` (مفتاح `appPage.mirrorLink` ×4) · تحديث `docs/DEPLOYMENT.md` (الرابط الدائم + قائمة التحقق).
+5. **التوثيق:** `CHANGELOG.md` قسم Unreleased + هذا القيد.
+
+### الأدلة المقيسة بعد النشر
+
+| الفحص | النتيجة |
+|---|---|
+| محلي `:3000/api/health` | `200` · `0.14.0` · `database:ok` |
+| `hrmp.pages.dev` · `fwms.tarikc.workers.dev` · `hrmp.vercel.app` | `200` · `0.14.0` · `database:ok` (الثلاثة) |
+| `HEAD` = `.next/BUILT_COMMIT` | `703645f` |
+| رابط GitHub الدائم (بلا مصادقة) | `200` · 3,188,019 · `application/vnd.android.package-archive` |
+| رابط المنصة `hrmp.pages.dev/HRMP.apk` | (يُقاس بعد إعادة البناء — القيد أدناه) |
+
+### طلبات موجّهة / ملاحظات
+- **الدفع إلى `origin` مستحيل** (حساب `tarikchouika` موقوف `403`) ⇒ هذا الالتزام محليًا؛ عند رفع الحظر: `git push origin main`. المستودع الاحتياطي `fngachraf-png/HRMP` صار **عامًا** ويحمل release `v0.14.0` — يمكن توجيه `origin` إليه لاستعادة `git pull`.
+- **كلمة بذور معاينة Vercel الجديدة** (لقطة أُعيد توليدها بـ`regen-preview-db.sh`): **غير مكتوبة هنا عمدًا** (الريبو صار عامًا) — موجودة في `/root/.credentials/hrmp.json` (600) · تعمل لـ`owner@fwms.local` وبقية حسابات `@demo.ma` · اللقطة نفسها مستبعدة من git بسياسة `*.db` في `.git/info/exclude`.
+
 ## [2026-10-25 — جولة «الأعطال الثلاثية + صلاحيتا الإشعارات وكلمة السر»] — المساعد الأول (v0.14.0)
 
 **النطاق (بلاغ المالك):** (1) «خلل في إرسال صورة، والفيديو المرسل لا يمسح بعد إستهلاكه مثل الأوديو المرسل» · (2) «خلل في خانة تفويض الصلاحيات: مفاتيح خام بلا ترجمة، وخانة الصلاحيات تتسبب بفيض الشاشة عند تغيير لغة المنصة» · (3) «خلل في الصفحة الرئيسية للمستخدمين: مفاتيح خام بلا ترجمة في سجل الأحداث» · (4) «إضافة صلاحية الإشعارات للهواتف والحواسب وتطبيق الأندرويد» · (5) «صلاحية تغيير كلمة سر المستخدمين للسوبر أدمين قابلة للتفويض للأدمن، مع منع الأدمن من مسح حساب السوبر أدمين أو إنشائه حتى مع التفويض، وحصر نقل الملكية وإنشاء السوبر أدمين في المالك». **التكليف:** تخطيط دقيق وتنفيذ احترافي.
