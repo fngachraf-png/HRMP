@@ -86,12 +86,14 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <I18nProvider locale={locale} dict={dict}>
             {children}
+            {/* «مساعد HRMP» — الشات الموجّه في كل صفحات المنصة (جولة 2026-10-28):
+                زر عائم باللوغو الرسمي؛ الرد بلغة المستخدم، حصرًا في خصائص المنصة،
+                بلا روابط وبلا هلوسة — عقد يفرضه العامل والخادم (src/app/api/assistant).
+                ⚠️ يجب أن يبقى داخل I18nProvider: يستدعي useI18n() — خارجه يرمي
+                «useI18n must be used within I18nProvider» ويسقط كل الصفحات بـ500. */}
+            <AssistantWidget />
           </I18nProvider>
           <Toaster />
-          {/* «مساعد HRMP» — الشات الموجّه في كل صفحات المنصة (جولة 2026-10-28):
-              زر عائم باللوغو الرسمي؛ الرد بلغة المستخدم، حصرًا في خصائص المنصة،
-              بلا روابط وبلا هلوسة — عقد يفرضه العامل والخادم (src/app/api/assistant). */}
-          <AssistantWidget />
           <ServiceWorkerRegister />
           <NativeShell />
         </ThemeProvider>
